@@ -1,68 +1,76 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
 from datetime import datetime
+import pytz
 
 app = Flask(__name__)
 app.secret_key = "Aaa8888"
 
 DB = "data.db"
 
+# ================= TIME =================
+def now_time():
+    tz = pytz.timezone("Asia/Kuala_Lumpur")
+    return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-# ================= SAFE DB INIT =================
+
+# ================= DB INIT =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    # 交易表（自动兼容旧数据库）
     c.execute("""
     CREATE TABLE IF NOT EXISTS records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        time TEXT,
         account TEXT,
         amount REAL,
         payment TEXT,
-        remark TEXT
+        remark TEXT,
+        time TEXT
     )
     """)
 
-    # credit 表
     c.execute("""
     CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY,
-        credit REAL
+        key TEXT PRIMARY KEY,
+        value REAL
     )
     """)
 
-    c.execute("INSERT OR IGNORE INTO settings (id, credit) VALUES (1, 0)")
+    default = [
+        ("credit", 5000),
+        ("tng", 0),
+        ("cash", 0),
+        ("bank", 0),
+        ("a", 0)
+    ]
+
+    for k, v in default:
+        c.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (k, v))
 
     conn.commit()
     conn.close()
-
 
 init_db()
 
 
-# ================= CREDIT =================
-def get_credit():
+# ================= GET VALUE =================
+def get_value(key):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT credit FROM settings WHERE id=1")
-    val = c.fetchone()[0]
+    c.execute("SELECT value FROM settings WHERE key=?", (key,))
+    v = c.fetchone()[0]
     conn.close()
-    return val
+    return v
 
 
-def update_credit(amount):
+# ================= UPDATE VALUE =================
+def update_value(key, amount):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("UPDATE settings SET credit = credit + ? WHERE id=1", (amount,))
+    c.execute("UPDATE settings SET value = value + ? WHERE key=?", (amount, key))
     conn.commit()
     conn.close()
-
-
-# ================= TIME =================
-def now_time():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 # ================= LOGIN =================
@@ -74,12 +82,7 @@ def login():
             return redirect("/home")
         return "密码错误"
 
-    return """
-    <form method='POST'>
-        <input name='password' type='password'>
-        <button>Login</button>
-    </form>
-    """
+    return render_template("login.html")
 
 
 # ================= HOME =================
@@ -90,36 +93,41 @@ def home():
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT * FROM records ORDER BY id DESC")
     data = c.fetchall()
-
     conn.close()
 
-    return render_template("index.html", data=data, credit=get_credit())
+    return render_template("index.html", data=data, credit=get_value("credit"))
 
 
-# ================= ADD =================
+# ================= ADD RECORD =================
 @app.route("/add", methods=["POST"])
 def add():
     if not session.get("login"):
         return redirect("/")
 
-    account = request.form.get("account", "")
-    amount = float(request.form.get("amount", 0))
-    payment = request.form.get("payment", "")
-    remark = request.form.get("remark", "")
+    account = request.form["account"]
+    amount = float(request.form["amount"])
+    payment = request.form["payment"]
+    remark = request.form["remark"]
 
-    # credit 更新
-    update_credit(amount)
+    # ================= LOGIC =================
+    # A模式：
+    # +100 -> credit -100
+    # -100 -> credit +100
+
+    credit_change = -amount
+
+    update_value("credit", credit_change)
+    update_value(payment.lower(), amount)
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute("""
-        INSERT INTO records (time, account, amount, payment, remark)
+        INSERT INTO records (account, amount, payment, remark, time)
         VALUES (?,?,?,?,?)
-    """, (now_time(), account, amount, payment, remark))
+    """, (account, amount, payment, remark, now_time()))
 
     conn.commit()
     conn.close()
@@ -127,62 +135,31 @@ def add():
     return redirect("/home")
 
 
-# ================= REPORT =================
-@app.route("/reports")
-def reports():
+# ================= DELETE =================
+@app.route("/delete/<int:id>")
+def delete(id):
     if not session.get("login"):
         return redirect("/")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT SUM(amount) FROM records")
-    total = c.fetchone()[0] or 0
+    c.execute("SELECT amount, payment FROM records WHERE id=?", (id,))
+    row = c.fetchone()
 
-    c.execute("SELECT payment, SUM(amount) FROM records GROUP BY payment")
-    payment_stats = c.fetchall()
+    if row:
+        amount, payment = row
 
+        # rollback
+        update_value("credit", amount)
+        update_value(payment.lower(), -amount)
+
+        c.execute("DELETE FROM records WHERE id=?", (id,))
+
+    conn.commit()
     conn.close()
 
-    return render_template(
-        "reports.html",
-        total=total,
-        credit=get_credit(),
-        payment_stats=payment_stats
-    )
-
-
-# ================= SEARCH =================
-@app.route("/search", methods=["GET", "POST"])
-def search():
-    if not session.get("login"):
-        return redirect("/")
-
-    results = []
-
-    if request.method == "POST":
-        d = request.form["date"]
-
-        conn = sqlite3.connect(DB)
-        c = conn.cursor()
-
-        c.execute("""
-        SELECT * FROM records
-        WHERE date(time)=?
-        ORDER BY id DESC
-        """, (d,))
-
-        results = c.fetchall()
-        conn.close()
-
-    return render_template("search.html", results=results)
-
-
-# ================= LOGOUT =================
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
+    return redirect("/home")
 
 
 if __name__ == "__main__":
