@@ -10,7 +10,7 @@ app.secret_key = "Aaa8888"
 DB = "data.db"
 
 # ================= TELEGRAM CONFIG =================
-BOT_TOKEN = "PUT_YOUR_BOT_TOKEN_HERE"
+BOT_TOKEN = 8660820217:AAFCfgnb-J6c7AdB6j2OABIkHNtqE4flHxo
 CHAT_ID = "PUT_YOUR_CHAT_ID_HERE"
 
 def send_telegram(msg):
