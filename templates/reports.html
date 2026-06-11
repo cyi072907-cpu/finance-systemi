@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>报表</title>
+</head>
+
+<body style="font-family:Arial;padding:10px">
+
+<h2>📊 报表中心</h2>
+
+<p>💰 Credit：{{credit}}</p>
+
+<h3>📅 今日盈亏：{{today_profit}}</h3>
+<h3>📆 本周盈亏：{{week_profit}}</h3>
+
+<h3>💳 付款方式统计</h3>
+<ul>
+{% for p in payment_stats %}
+<li>{{p[0]}} : {{p[1]}}</li>
+{% endfor %}
+</ul>
+
+<a href="/home">返回首页</a>
+
+</body>
+</html>
