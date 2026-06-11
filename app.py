@@ -13,7 +13,8 @@ def now_time():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-# ================= DB INIT =================
+
+# ================= INIT DB =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -46,6 +47,7 @@ def init_db():
 
     default = [
         ("credit", 5000),
+        ("open_credit", 5000),
         ("tng", 0),
         ("cash", 0),
         ("bank", 0),
@@ -59,6 +61,7 @@ def init_db():
     conn.close()
 
 init_db()
+
 
 # ================= HELPERS =================
 def get_value(key):
@@ -85,19 +88,37 @@ def log(action):
     conn.commit()
     conn.close()
 
-# ================= PROFIT =================
-def calc_profit(start_time):
+
+# ================= DAILY OPEN =================
+def set_open_if_new_day():
+    today = now_time()[:10]
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT amount FROM records WHERE time >= ?", (start_time,))
-    rows = c.fetchall()
+
+    c.execute("SELECT value FROM settings WHERE key='open_credit'")
+    open_credit = c.fetchone()[0]
+
+    c.execute("SELECT value FROM settings WHERE key='credit'")
+    credit = c.fetchone()[0]
+
+    # 每天刷新一次开盘
+    c.execute("SELECT action FROM logs ORDER BY id DESC LIMIT 1")
+    last = c.fetchone()
+
+    if not last or today not in last[0]:
+        c.execute("UPDATE settings SET value=? WHERE key='open_credit'", (credit,))
+        conn.commit()
+
     conn.close()
-    return sum(-r[0] for r in rows)
 
 
-def calc_profit_today():
-    today = now_time()[:10] + " 00:00:00"
-    return calc_profit(today)
+# ================= PROFIT =================
+def calc_profit():
+    open_credit = get_value("open_credit")
+    current = get_value("credit")
+    return open_credit - current
+
 
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
@@ -109,11 +130,14 @@ def login():
         return "密码错误"
     return render_template("login.html")
 
+
 # ================= HOME =================
 @app.route("/home")
 def home():
     if not session.get("login"):
         return redirect("/")
+
+    set_open_if_new_day()
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -130,13 +154,14 @@ def home():
     return render_template(
         "index.html",
         data=data,
-        credit=get_value("credit"),
-        tng=get_value("tng"),
-        cash=get_value("cash"),
-        bank=get_value("bank"),
-        a=get_value("a"),
-        profit=calc_profit_today()
+        credit=get("credit"),
+        tng=get("tng"),
+        cash=get("cash"),
+        bank=get("bank"),
+        a=get("a"),
+        profit=calc_profit()
     )
+
 
 # ================= ADD =================
 @app.route("/add", methods=["POST"])
@@ -152,7 +177,7 @@ def add():
     update_value("credit", -amount)
     update_value(payment.lower(), amount)
 
-    log(f"ADD {account} {amount} {payment}")
+    log(f"ADD {account} {amount}")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -166,6 +191,7 @@ def add():
     conn.close()
 
     return redirect("/home")
+
 
 # ================= DELETE =================
 @app.route("/delete/<int:id>")
@@ -185,7 +211,7 @@ def delete(id):
         update_value("credit", amount)
         update_value(payment.lower(), -amount)
 
-        log(f"DELETE ID {id}")
+        log(f"DELETE {id}")
 
         c.execute("DELETE FROM records WHERE id=?", (id,))
 
@@ -194,45 +220,42 @@ def delete(id):
 
     return redirect("/home")
 
-# ================= REPORT HELP =================
-def get_range_data(start_time):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
 
-    c.execute("""
-        SELECT account, amount, payment, time
-        FROM records
-        WHERE time >= ?
-        ORDER BY id DESC
-    """, (start_time,))
-
-    data = c.fetchall()
-    conn.close()
-    return data
-
-# ================= REPORTS =================
+# ================= REPORT =================
 @app.route("/report/daily")
-def daily_report():
+def daily():
     if not session.get("login"):
         return redirect("/")
+
     today = now_time()[:10] + " 00:00:00"
-    return render_template("reports.html",
-                           data=get_range_data(today),
-                           title="Daily Report")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT account, amount, payment, time FROM records WHERE time>=?", (today,))
+    data = c.fetchall()
+    conn.close()
+
+    return render_template("reports.html", data=data, title="Daily")
+
 
 @app.route("/report/weekly")
-def weekly_report():
+def weekly():
     if not session.get("login"):
         return redirect("/")
 
     start = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
 
-    return render_template("reports.html",
-                           data=get_range_data(start),
-                           title="Weekly Report")
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT account, amount, payment, time FROM records WHERE time>=?", (start,))
+    data = c.fetchall()
+    conn.close()
+
+    return render_template("reports.html", data=data, title="Weekly")
+
 
 @app.route("/report/monthly")
-def monthly_report():
+def monthly():
     if not session.get("login"):
         return redirect("/")
 
@@ -240,16 +263,12 @@ def monthly_report():
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("""
-        SELECT account, amount, payment, time
-        FROM records
-        WHERE time LIKE ?
-        ORDER BY id DESC
-    """, (month + "%",))
+    c.execute("SELECT account, amount, payment, time FROM records WHERE time LIKE ?", (month+"%",))
     data = c.fetchall()
     conn.close()
 
-    return render_template("reports.html", data=data, title="Monthly Report")
+    return render_template("reports.html", data=data, title="Monthly")
+
 
 # ================= HISTORY =================
 @app.route("/history", methods=["GET", "POST"])
@@ -260,32 +279,19 @@ def history():
     data = []
 
     if request.method == "POST":
-        account = request.form.get("account")
-        payment = request.form.get("payment")
-        start = request.form.get("start")
-        end = request.form.get("end")
-
         conn = sqlite3.connect(DB)
         c = conn.cursor()
 
         query = "SELECT account, amount, payment, time FROM records WHERE 1=1"
         params = []
 
-        if account:
+        if request.form.get("account"):
             query += " AND account=?"
-            params.append(account)
+            params.append(request.form["account"])
 
-        if payment:
+        if request.form.get("payment"):
             query += " AND payment=?"
-            params.append(payment)
-
-        if start:
-            query += " AND time>=?"
-            params.append(start)
-
-        if end:
-            query += " AND time<=?"
-            params.append(end)
+            params.append(request.form["payment"])
 
         query += " ORDER BY id DESC"
 
@@ -294,6 +300,7 @@ def history():
         conn.close()
 
     return render_template("history.html", data=data)
+
 
 # ================= RUN =================
 if __name__ == "__main__":
