@@ -1,10 +1,10 @@
 {
-  "name": "Boss Finance System",
-  "short_name": "BossSystem",
+  "name": "Boss Finance System V2",
+  "short_name": "BossFinance",
   "start_url": "/home",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
   "icons": [
     {
       "src": "/static/icon.png",
