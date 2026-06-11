@@ -18,6 +18,7 @@ def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
+    # records
     c.execute("""
     CREATE TABLE IF NOT EXISTS records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,10 +30,20 @@ def init_db():
     )
     """)
 
+    # settings
     c.execute("""
     CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value REAL
+    )
+    """)
+
+    # logs
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action TEXT,
+        time TEXT
     )
     """)
 
@@ -69,20 +80,23 @@ def update_value(key, amount):
     conn.commit()
     conn.close()
 
+
+def log(action):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("INSERT INTO logs (action, time) VALUES (?,?)", (action, now_time()))
+    conn.commit()
+    conn.close()
+
 # ================= PROFIT =================
 def calc_profit(start_time):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT amount FROM records WHERE time >= ?", (start_time,))
     rows = c.fetchall()
     conn.close()
 
-    total = 0
-    for r in rows:
-        total += (-r[0])
-
-    return total
+    return sum(-r[0] for r in rows)
 
 
 def calc_profit_today():
@@ -97,7 +111,6 @@ def login():
             session["login"] = True
             return redirect("/home")
         return "密码错误"
-
     return render_template("login.html")
 
 # ================= HOME =================
@@ -149,6 +162,8 @@ def add():
     update_value("credit", -amount)
     update_value(payment.lower(), amount)
 
+    log(f"ADD {account} {amount} {payment}")
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
@@ -179,6 +194,8 @@ def delete(id):
 
         update_value("credit", amount)
         update_value(payment.lower(), -amount)
+
+        log(f"DELETE ID {id}")
 
         c.execute("DELETE FROM records WHERE id=?", (id,))
 
@@ -297,10 +314,3 @@ def history():
 # ================= RUN =================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-    c.execute("""
-CREATE TABLE IF NOT EXISTS logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    action TEXT,
-    time TEXT
-)
-""")
