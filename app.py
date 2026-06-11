@@ -269,3 +269,19 @@ def set_balance():
 # ================= RUN =================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+    @app.route("/weekly")
+def weekly():
+    if not session.get("login"):
+        return redirect("/")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("SELECT SUM(profit) FROM daily_close")
+    result = c.fetchone()[0]
+
+    conn.close()
+
+    profit = result if result else 0
+
+    return render_template("weekly.html", profit=profit)
