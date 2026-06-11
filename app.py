@@ -1,34 +1,17 @@
-from flask import Flask, render_template, request, redirect, session
-import sqlite3
-from datetime import datetime, timedelta
-import pytz
 import os
+import sqlite3
+from datetime import datetime
+from flask import Flask, request, redirect, render_template_string, session
 
 app = Flask(__name__)
-app.secret_key = "CHANGE_ME_123"
+app.secret_key = "v6_secret_key"
 
+# ================= BOT TOKEN =================
+BOT_TOKEN = os.environ.get("8660820217:AAFCfgnb_J6c7AdBlkHNtqE4flHxo")  # Render 里填
+
+# ================= DATABASE =================
 DB = "data.db"
 
-# ================= BOT TOKEN（Render安全版）=================
-BOT_TOKEN = os.environ.get("8660820217:AAFCfgnb_J6c7AbB6j2OABlkHNtqE4flHxo")
-
-# ================= TIME =================
-def now_time():
-    tz = pytz.timezone("Asia/Kuala_Lumpur")
-    return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-
-def today():
-    return now_time()[:10]
-
-def today_start():
-    return today() + " 00:00:00"
-
-def get_week_start():
-    d = datetime.now(pytz.timezone("Asia/Kuala_Lumpur"))
-    start = d - timedelta(days=d.weekday())
-    return start.strftime("%Y-%m-%d")
-
-# ================= DB =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -38,116 +21,58 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         account TEXT,
         amount REAL,
-        payment TEXT,
+        type TEXT,
         remark TEXT,
         time TEXT
     )
     """)
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value REAL
-    )
-    """)
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS daily_close (
-        date TEXT PRIMARY KEY,
-        start_credit REAL,
-        end_credit REAL,
-        profit REAL
-    )
-    """)
-
-    default = [
-        ("credit", 5000),
-        ("tng", 0),
-        ("cash", 0),
-        ("bank", 0),
-        ("a", 0)
-    ]
-
-    for k, v in default:
-        c.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (k, v))
 
     conn.commit()
     conn.close()
 
 init_db()
 
-# ================= HELPERS =================
-def get_value(key):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT value FROM settings WHERE key=?", (key,))
-    v = c.fetchone()[0]
-    conn.close()
-    return v
+# ================= TIME =================
+def now_time():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-def set_value(key, value):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("UPDATE settings SET value=? WHERE key=?", (value, key))
-    conn.commit()
-    conn.close()
-
-def update_value(key, amount):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("UPDATE settings SET value = value + ? WHERE key=?", (amount, key))
-    conn.commit()
-    conn.close()
+def today_start():
+    return datetime.now().strftime("%Y-%m-%d")
 
 # ================= PROFIT =================
 def calc_profit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT amount FROM records WHERE time >= ?", (today_start(),))
+    c.execute("SELECT amount, type FROM records")
     rows = c.fetchall()
     conn.close()
-    return sum(-r[0] for r in rows)
 
-# ================= PUSH（安全版，不会炸）=================
-def send_push(title, msg):
-    print(f"[PUSH] {title}: {msg}")
+    profit = 0
+    for amount, t in rows:
+        if t == "in":
+            profit += amount
+        else:
+            profit -= amount
 
-# ================= DAILY SETTLEMENT =================
-def daily_settlement():
-    profit = calc_profit()
+    return profit
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("""
-    INSERT OR REPLACE INTO daily_close
-    (date, start_credit, end_credit, profit)
-    VALUES (?,?,?,?)
-    """, (today(), get_value("credit"), get_value("credit"), profit))
-
-    conn.commit()
-    conn.close()
-
-    send_push("Daily Report", f"Profit: {profit}")
-
-# ================= WEEKLY =================
-def get_week_profit():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT SUM(profit) FROM daily_close")
-    result = c.fetchone()[0]
-    conn.close()
-    return result or 0
-
-# ================= LOGIN =================
+# ================= LOGIN (简单版) =================
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form["username"] == "admin" and request.form["password"] == "Aaa8888":
+        password = request.form.get("password")
+        if password == "1234":
             session["login"] = True
             return redirect("/home")
-        return "Login Failed"
-    return render_template("login.html")
+        return "密码错误"
+
+    return """
+    <h2>Login</h2>
+    <form method="post">
+        <input name="password" placeholder="密码">
+        <button>进入</button>
+    </form>
+    """
 
 # ================= HOME =================
 @app.route("/home")
@@ -157,24 +82,60 @@ def home():
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT * FROM records ORDER BY id DESC LIMIT 20")
-    data = c.fetchall()
-
+    rows = c.fetchall()
     conn.close()
 
-    return render_template(
-        "index.html",
-        data=data,
-        credit=get_value("credit"),
-        tng=get_value("tng"),
-        cash=get_value("cash"),
-        bank=get_value("bank"),
-        a=get_value("a"),
-        profit=calc_profit()
-    )
+    profit = calc_profit()
 
-# ================= ADD =================
+    html = """
+    <h2>📊 资金系统 V6</h2>
+
+    <h3>💰 当前盈亏：{{profit}}</h3>
+
+    <hr>
+
+    <h3>➕ 新增记录</h3>
+    <form method="post" action="/add">
+        账号：<input name="account"><br><br>
+        金额：<input name="amount"><br><br>
+        类型：
+        <select name="type">
+            <option value="in">收入(+)</option>
+            <option value="out">支出(-)</option>
+        </select><br><br>
+        备注：<input name="remark"><br><br>
+        <button>提交</button>
+    </form>
+
+    <hr>
+
+    <h3>📜 历史记录</h3>
+    <table border="1" cellpadding="5">
+        <tr>
+            <th>ID</th>
+            <th>账号</th>
+            <th>金额</th>
+            <th>类型</th>
+            <th>备注</th>
+            <th>时间</th>
+        </tr>
+        {% for r in rows %}
+        <tr>
+            <td>{{r[0]}}</td>
+            <td>{{r[1]}}</td>
+            <td>{{r[2]}}</td>
+            <td>{{r[3]}}</td>
+            <td>{{r[4]}}</td>
+            <td>{{r[5]}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    """
+
+    return render_template_string(html, rows=rows, profit=profit)
+
+# ================= ADD RECORD =================
 @app.route("/add", methods=["POST"])
 def add():
     if not session.get("login"):
@@ -182,52 +143,22 @@ def add():
 
     account = request.form["account"]
     amount = float(request.form["amount"])
-    payment = request.form["payment"]
+    t = request.form["type"]
     remark = request.form["remark"]
-
-    update_value("credit", -amount)
-    update_value(payment, amount)
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute("""
-    INSERT INTO records (account, amount, payment, remark, time)
-    VALUES (?,?,?,?,?)
-    """, (account, amount, payment, remark, now_time()))
+        INSERT INTO records (account, amount, type, remark, time)
+        VALUES (?,?,?,?,?)
+    """, (account, amount, t, remark, now_time()))
 
     conn.commit()
     conn.close()
 
     return redirect("/home")
 
-# ================= DELETE =================
-@app.route("/delete/<int:id>")
-def delete(id):
-    if not session.get("login"):
-        return redirect("/")
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("SELECT amount, payment FROM records WHERE id=?", (id,))
-    row = c.fetchone()
-
-    if row:
-        amount, payment = row
-        update_value("credit", amount)
-        update_value(payment, -amount)
-        c.execute("DELETE FROM records WHERE id=?", (id,))
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/home")
-
-# ================= WEEKLY PAGE =================
-@app.route("/weekly")
-def weekly():
-    if not session.get("login"):
-        return redirect("/")
-
-    return render_template("weekly.html", profit=get_week_profit())
+# ================= RUN =================
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
