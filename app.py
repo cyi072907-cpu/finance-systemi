@@ -130,6 +130,10 @@ def daily_settlement():
     conn.commit()
     conn.close()
 
+send_push(
+    "Daily Report",
+    f"Today Profit: {profit}"
+)
 # ================= WEEKLY CLOSE =================
 def weekly_settlement():
     conn = sqlite3.connect(DB)
@@ -285,3 +289,6 @@ def weekly():
     profit = result if result else 0
 
     return render_template("weekly.html", profit=profit)
+    def send_push(title, msg):
+    print(f"[PUSH] {title}: {msg}")
+    
