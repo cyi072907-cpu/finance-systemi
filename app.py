@@ -316,3 +316,35 @@ def delete(id):
     conn.close()
 
     return redirect("/home")
+    def calc_profit(start_time):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT amount FROM records
+        WHERE time >= ?
+    """, (start_time,))
+
+    rows = c.fetchall()
+    conn.close()
+
+    total = 0
+
+    for r in rows:
+        amt = r[0]
+
+        # 你的规则：
+        # +100 = 你亏
+        # -100 = 你赚
+        total += (-amt)
+
+    return total
+    @app.route("/profit/today")
+def profit_today():
+    if not session.get("login"):
+        return redirect("/")
+
+    today = now_time()[:10] + " 00:00:00"
+    profit = calc_profit(today)
+
+    return render_template("profit.html", title="Today Profit", profit=profit)
