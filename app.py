@@ -227,3 +227,46 @@ def monthly_report():
 
     return render_template("reports.html", data=data, title="Monthly Report")
     
+    @app.route("/history", methods=["GET", "POST"])
+def history():
+    if not session.get("login"):
+        return redirect("/")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    data = []
+
+    if request.method == "POST":
+        account = request.form.get("account")
+        payment = request.form.get("payment")
+        start = request.form.get("start")
+        end = request.form.get("end")
+
+        query = "SELECT account, amount, payment, time FROM records WHERE 1=1"
+        params = []
+
+        if account:
+            query += " AND account=?"
+            params.append(account)
+
+        if payment:
+            query += " AND payment=?"
+            params.append(payment)
+
+        if start:
+            query += " AND time>=?"
+            params.append(start)
+
+        if end:
+            query += " AND time<=?"
+            params.append(end)
+
+        query += " ORDER BY id DESC"
+
+        c.execute(query, params)
+        data = c.fetchall()
+
+    conn.close()
+
+    return render_template("history.html", data=data)
