@@ -270,3 +270,27 @@ def history():
     conn.close()
 
     return render_template("history.html", data=data)
+    @app.route("/delete/<int:id>")
+def delete(id):
+    if not session.get("login"):
+        return redirect("/")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("SELECT amount, payment FROM records WHERE id=?", (id,))
+    row = c.fetchone()
+
+    if row:
+        amount, payment = row
+
+        # rollback
+        update_value("credit", amount)
+        update_value(payment.lower(), -amount)
+
+        c.execute("DELETE FROM records WHERE id=?", (id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/home")
