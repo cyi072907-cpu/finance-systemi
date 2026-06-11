@@ -2,41 +2,49 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>资金记录系统</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System</title>
+<style>
+body{font-family:Arial;background:#f5f5f5;padding:10px}
+.card{background:white;padding:10px;margin:10px;border-radius:10px}
+input,select,button{width:100%;padding:10px;margin-top:5px}
+table{width:100%;background:white;margin-top:10px;border-collapse:collapse}
+td,th{border:1px solid #ddd;padding:5px;font-size:12px}
+</style>
 </head>
+
 <body>
 
-<h2>💰 资金记录系统</h2>
+<div class="card">
+<h3>💰 Balance: {{balance}}</h3>
+<a href="/logout">Logout</a>
+</div>
 
+<div class="card">
 <form action="/add" method="POST">
-<input name="account" placeholder="账号" required>
+<input name="amount" placeholder="+100 / -100" required>
 
-<select name="type">
-<option>入账</option>
-<option>出账</option>
+<select name="payment">
+<option>TNG</option>
+<option>Cash</option>
+<option>Bank</option>
+<option>Name</option>
 </select>
 
-<input name="amount" type="number" placeholder="金额" required>
-<input name="before" type="number" placeholder="操作前余额" required>
-<input name="remark" placeholder="备注">
+<input name="remark" placeholder="Remark">
 
-<button type="submit">添加记录</button>
+<button type="submit">Submit</button>
 </form>
+</div>
 
-<hr>
-
-<h3>记录列表</h3>
-
-<table border="1" cellpadding="5">
+<div class="card">
+<table>
 <tr>
-<th>时间</th>
-<th>账号</th>
-<th>类型</th>
-<th>金额</th>
-<th>前余额</th>
-<th>后余额</th>
-<th>备注</th>
-<th>操作</th>
+<th>Time</th>
+<th>Amount</th>
+<th>Payment</th>
+<th>Remark</th>
+<th>Balance</th>
 </tr>
 
 {% for r in data %}
@@ -46,13 +54,11 @@
 <td>{{r[3]}}</td>
 <td>{{r[4]}}</td>
 <td>{{r[5]}}</td>
-<td>{{r[6]}}</td>
-<td>{{r[7]}}</td>
-<td><a href="/delete/{{r[0]}}">删除</a></td>
 </tr>
 {% endfor %}
 
 </table>
+</div>
 
 </body>
 </html>
