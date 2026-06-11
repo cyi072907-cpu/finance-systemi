@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Boss System</title>
+<title>Boss System V2 Final</title>
 
+<!-- PWA -->
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#0f172a">
 
@@ -19,10 +20,12 @@ body{
 
 .header{
     padding:15px;
+    font-size:18px;
     font-weight:bold;
     background:#111827;
 }
 
+/* grid */
 .grid{
     display:grid;
     grid-template-columns:repeat(2,1fr);
@@ -36,92 +39,176 @@ body{
     border-radius:12px;
 }
 
-.profit-positive{color:#22c55e;font-size:22px;font-weight:bold;}
-.profit-negative{color:#ef4444;font-size:22px;font-weight:bold;}
+/* 盈亏 */
+.profit-positive{
+    color:#22c55e;
+    font-size:22px;
+    font-weight:bold;
+}
 
-input,select,button{
+.profit-negative{
+    color:#ef4444;
+    font-size:22px;
+    font-weight:bold;
+}
+
+/* input */
+input,select{
     width:100%;
-    padding:8px;
+    padding:10px;
     margin:5px 0;
     border-radius:6px;
     border:none;
 }
 
+/* button */
 button{
     background:#22c55e;
+    border:none;
+    padding:10px;
     color:white;
+    border-radius:8px;
+    width:100%;
 }
 
+/* table */
 table{
     width:100%;
     border-collapse:collapse;
 }
 
-td,th{
+th{
+    background:#1f2937;
+    padding:8px;
+}
+
+td{
     padding:8px;
     border-bottom:1px solid #222;
+}
+
+a{
+    color:#38bdf8;
+    text-decoration:none;
+}
+
+/* section title */
+.section{
+    margin:10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">💰 Boss Finance System</div>
+<div class="header">
+💰 Boss Finance System V2 FINAL
+</div>
 
+<!-- ===== BALANCE ===== -->
 <div class="grid">
 
 <div class="card">
-<h3>Credit</h3>
+<h3>Credit (余额)</h3>
 <h2>{{credit}}</h2>
 </div>
 
 <div class="card">
 <h3>今日盈亏</h3>
-<h2 class="{% if profit>=0 %}profit-positive{% else %}profit-negative{% endif %}">
+<h2 class="{% if profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
 {{profit}}
 </h2>
 </div>
 
-<div class="card"><h3>TNG</h3><h2>{{tng}}</h2></div>
-<div class="card"><h3>CASH</h3><h2>{{cash}}</h2></div>
-<div class="card"><h3>BANK</h3><h2>{{bank}}</h2></div>
-<div class="card"><h3>A</h3><h2>{{a}}</h2></div>
+<div class="card">
+<h3>TNG</h3>
+<h2>{{tng}}</h2>
+</div>
+
+<div class="card">
+<h3>CASH</h3>
+<h2>{{cash}}</h2>
+</div>
+
+<div class="card">
+<h3>BANK</h3>
+<h2>{{bank}}</h2>
+</div>
+
+<div class="card">
+<h3>A</h3>
+<h2>{{a}}</h2>
+</div>
 
 </div>
 
-<div class="card" style="margin:10px;">
-<h3>Add</h3>
-<form action="/add" method="POST">
-<input name="account" placeholder="Account" required>
-<input name="amount" type="number" required>
-<select name="payment">
-<option>TNG</option>
-<option>Cash</option>
-<option>Bank</option>
-<option>A</option>
-</select>
-<input name="remark" placeholder="Remark">
-<button>Submit</button>
+<!-- ===== 手动改余额 ===== -->
+<div class="card section">
+<h3>⚙️ 手动修改余额</h3>
+
+<form action="/set_balance" method="POST">
+<input name="credit" type="number" placeholder="输入新的Credit余额">
+<button type="submit">更新余额</button>
 </form>
 </div>
 
-<div class="card" style="margin:10px;">
-<h3>Records</h3>
+<!-- ===== ADD ===== -->
+<div class="card section">
+<h3>➕ Add Record</h3>
+
+<form action="/add" method="POST">
+<input name="account" placeholder="Account" required>
+<input name="amount" type="number" placeholder="Amount" required>
+
+<select name="payment">
+<option value="tng">TNG</option>
+<option value="cash">Cash</option>
+<option value="bank">Bank</option>
+<option value="a">A</option>
+</select>
+
+<input name="remark" placeholder="Remark">
+
+<button type="submit">Submit</button>
+</form>
+</div>
+
+<!-- ===== RECORDS ===== -->
+<div class="card section">
+<h3>📌 Records</h3>
+
 <table>
+<tr>
+<th>Acc</th>
+<th>Amt</th>
+<th>Pay</th>
+<th>Time</th>
+<th>Del</th>
+</tr>
+
 {% for r in data %}
 <tr>
 <td>{{r[1]}}</td>
 <td>{{r[2]}}</td>
 <td>{{r[3]}}</td>
+<td>{{r[5]}}</td>
 <td><a href="/delete/{{r[0]}}">X</a></td>
 </tr>
 {% endfor %}
 </table>
 </div>
 
+<!-- ===== WEEK SUMMARY (预留UI) ===== -->
+<div class="card section">
+<h3>📊 本周总结</h3>
+<p>（下一步我会帮你接 weekly_close 数据）</p>
+</div>
+
+<!-- ===== PWA ===== -->
 <script>
-if ("serviceWorker" in navigator){
-navigator.serviceWorker.register("/static/service-worker.js");
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/static/service-worker.js")
+    .then(() => console.log("PWA Ready"));
 }
 </script>
 
