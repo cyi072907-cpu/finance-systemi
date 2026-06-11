@@ -1,246 +1,69 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Finance System V6</title>
+    <style>
+        body { font-family: Arial; background:#111; color:#fff; }
+        .box { width:900px; margin:auto; }
+        table { width:100%; border-collapse: collapse; margin-top:20px; }
+        th,td { border:1px solid #333; padding:8px; text-align:center; }
 
-<title>Boss System V2 FINAL</title>
+        input,select { padding:8px; margin:5px; }
+        button { padding:8px 12px; cursor:pointer; }
 
-<!-- PWA -->
-<link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#0f172a">
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body{
-    font-family:Arial;
-    background:#0f172a;
-    color:white;
-    margin:0;
-}
-
-.header{
-    padding:15px;
-    font-size:18px;
-    font-weight:bold;
-    background:#111827;
-}
-
-/* grid */
-.grid{
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:10px;
-    padding:10px;
-}
-
-.card{
-    background:#1f2937;
-    padding:15px;
-    border-radius:12px;
-}
-
-/* profit */
-.profit-positive{
-    color:#22c55e;
-    font-size:22px;
-    font-weight:bold;
-}
-
-.profit-negative{
-    color:#ef4444;
-    font-size:22px;
-    font-weight:bold;
-}
-
-/* input */
-input,select{
-    width:100%;
-    padding:10px;
-    margin:5px 0;
-    border-radius:6px;
-    border:none;
-}
-
-/* button */
-button{
-    background:#22c55e;
-    border:none;
-    padding:10px;
-    color:white;
-    border-radius:8px;
-    width:100%;
-}
-
-/* table */
-table{
-    width:100%;
-    border-collapse:collapse;
-}
-
-th{
-    background:#1f2937;
-    padding:8px;
-}
-
-td{
-    padding:8px;
-    border-bottom:1px solid #222;
-}
-
-a{
-    color:#38bdf8;
-    text-decoration:none;
-}
-
-.section{
-    margin:10px;
-}
-</style>
+        .pos { color:#00ff88; font-size:22px; }
+        .neg { color:#ff4d4d; font-size:22px; }
+    </style>
 </head>
 
 <body>
+<div class="box">
 
-<div class="header">
-💰 Boss Finance System V2 FINAL
+    <h2>💰 Finance System V6 (Stable)</h2>
+
+    <h3>
+        Balance:
+        <span class="{{ 'pos' if balance >= 0 else 'neg' }}">
+            {{ balance }}
+        </span>
+    </h3>
+
+    <form action="/add" method="post">
+        <input name="account" placeholder="Account" required>
+        <input name="amount" placeholder="Amount" required>
+
+        <select name="type">
+            <option value="in">IN +</option>
+            <option value="out">OUT -</option>
+        </select>
+
+        <button type="submit">Add</button>
+    </form>
+
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Account</th>
+            <th>Amount</th>
+            <th>Type</th>
+            <th>Time</th>
+            <th>Delete</th>
+            <th>Balance</th>
+        </tr>
+
+        {% for r in records %}
+        <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.account }}</td>
+            <td>{{ r.amount }}</td>
+            <td>{{ r.type }}</td>
+            <td>{{ r.time }}</td>
+            <td><a href="/delete/{{ r.id }}" style="color:red">X</a></td>
+            <td>{{ r.balance }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
 </div>
-
-<!-- ================= BALANCE ================= -->
-<div class="grid">
-
-<div class="card">
-<h3>Credit (余额)</h3>
-<h2>{{credit}}</h2>
-</div>
-
-<div class="card">
-<h3>今日盈亏</h3>
-<h2 class="{% if profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
-{{profit}}
-</h2>
-</div>
-
-<div class="card">
-<h3>TNG</h3>
-<h2>{{tng}}</h2>
-</div>
-
-<div class="card">
-<h3>CASH</h3>
-<h2>{{cash}}</h2>
-</div>
-
-<div class="card">
-<h3>BANK</h3>
-<h2>{{bank}}</h2>
-</div>
-
-<div class="card">
-<h3>A</h3>
-<h2>{{a}}</h2>
-</div>
-
-</div>
-
-<!-- ================= WEEK BUTTON ================= -->
-<div class="card section">
-<h3>📊 Weekly Report</h3>
-
-<a href="/weekly">
-    <button>查看本周盈亏</button>
-</a>
-</div>
-
-<!-- ================= MANUAL BALANCE ================= -->
-<div class="card section">
-<h3>⚙️ 手动修改余额</h3>
-
-<form action="/set_balance" method="POST">
-<input name="credit" type="number" placeholder="输入新的Credit余额">
-<button type="submit">更新余额</button>
-</form>
-</div>
-
-<!-- ================= ADD ================= -->
-<div class="card section">
-<h3>➕ Add Record</h3>
-
-<form action="/add" method="POST">
-<input name="account" placeholder="Account" required>
-<input name="amount" type="number" placeholder="Amount" required>
-
-<select name="payment">
-<option value="tng">TNG</option>
-<option value="cash">Cash</option>
-<option value="bank">Bank</option>
-<option value="a">A</option>
-</select>
-
-<input name="remark" placeholder="Remark">
-
-<button type="submit">Submit</button>
-</form>
-</div>
-
-<!-- ================= RECORDS ================= -->
-<div class="card section">
-<h3>📌 Records</h3>
-
-<table>
-<tr>
-<th>Acc</th>
-<th>Amt</th>
-<th>Pay</th>
-<th>Time</th>
-<th>Del</th>
-</tr>
-
-{% for r in data %}
-<tr>
-<td>{{r[1]}}</td>
-<td>{{r[2]}}</td>
-<td>{{r[3]}}</td>
-<td>{{r[5]}}</td>
-<td><a href="/delete/{{r[0]}}">X</a></td>
-</tr>
-{% endfor %}
-</table>
-</div>
-
-<!-- ================= CHART ================= -->
-<div class="card section">
-<h3>📈 Weekly Trend</h3>
-<canvas id="profitChart"></canvas>
-</div>
-
-<!-- ================= PWA ================= -->
-<script>
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/static/service-worker.js")
-    .then(() => console.log("PWA Ready"));
-}
-</script>
-
-<!-- ================= CHART JS ================= -->
-<script>
-const ctx = document.getElementById('profitChart');
-
-new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-        datasets: [{
-            label: 'Weekly Profit',
-            data: [100,200,-50,300,-100,400,250],
-            borderColor: '#22c55e',
-            tension: 0.3
-        }]
-    }
-});
-</script>
-
 </body>
 </html>
-<script src="/static/push.js"></script>
