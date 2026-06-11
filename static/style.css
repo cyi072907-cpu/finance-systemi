@@ -47,3 +47,15 @@ form button {
     color: white;
     border: none;
 }
+button {
+    padding: 10px;
+    margin: 5px;
+    border: none;
+    border-radius: 8px;
+    background: #111;
+    color: white;
+}
+
+table {
+    font-size: 14px;
+}
