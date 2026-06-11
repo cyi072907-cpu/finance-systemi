@@ -349,3 +349,18 @@ def profit_today():
 
     return render_template("profit.html", title="Today Profit", profit=profit)
     
+    def calc_profit_today():
+    today = now_time()[:10] + " 00:00:00"
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("SELECT amount FROM records WHERE time >= ?", (today,))
+    rows = c.fetchall()
+    conn.close()
+
+    profit = 0
+    for r in rows:
+        profit += (-r[0])
+
+    return profit
