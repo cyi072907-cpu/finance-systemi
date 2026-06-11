@@ -23,7 +23,7 @@ def today_start():
     return today() + " 00:00:00"
 
 
-# ================= DB INIT =================
+# ================= DB =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -95,22 +95,19 @@ def update_value(key, amount):
 def calc_profit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT amount FROM records WHERE time >= ?", (today_start(),))
     rows = c.fetchall()
-
     conn.close()
 
     return sum(-r[0] for r in rows)
 
 
-# ================= DAILY SETTLEMENT =================
+# ================= DAILY CLOSE (手动/未来自动用) =================
 def daily_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     date = today()
-
     start = get_value("credit")
     end = get_value("credit")
     profit = calc_profit()
@@ -205,10 +202,8 @@ def delete(id):
 
     if row:
         amount, payment = row
-
         update_value("credit", amount)
         update_value(payment.lower(), -amount)
-
         c.execute("DELETE FROM records WHERE id=?", (id,))
 
     conn.commit()
