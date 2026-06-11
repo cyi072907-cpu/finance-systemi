@@ -2,45 +2,31 @@ from flask import Flask, render_template, request, redirect, session
 import sqlite3
 from datetime import datetime, timedelta
 import pytz
-from apscheduler.schedulers.background import BackgroundScheduler
-import requests
+import os
 
 app = Flask(__name__)
-app.secret_key = "Aaa8888"
+app.secret_key = "CHANGE_ME_123"
 
 DB = "data.db"
 
-# ================= TELEGRAM =================
-BOT_TOKEN = 8660820217:AAFCfgnb-J6c7AdB6j2OABIkHNtqE4flHxo
-CHAT_ID = 6691555924
-
-
-def send_telegram(msg):
-    try:
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        requests.post(url, data={
-            "chat_id": CHAT_ID,
-            "text": msg
-        })
-    except Exception as e:
-        print("Telegram Error:", e)
+# ================= BOT TOKEN（Render安全版）=================
+BOT_TOKEN = os.environ.get(8660820217:AAFCfgnb-J6c7AdB6j2OABIkHNtqE4flHxo）
 
 # ================= TIME =================
 def now_time():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-
 def today():
     return now_time()[:10]
 
+def today_start():
+    return today() + " 00:00:00"
 
 def get_week_start():
-    tz = pytz.timezone("Asia/Kuala_Lumpur")
-    d = datetime.now(tz)
+    d = datetime.now(pytz.timezone("Asia/Kuala_Lumpur"))
     start = d - timedelta(days=d.weekday())
     return start.strftime("%Y-%m-%d")
-
 
 # ================= DB =================
 def init_db():
@@ -74,13 +60,6 @@ def init_db():
     )
     """)
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS weekly_close (
-        week TEXT PRIMARY KEY,
-        profit REAL
-    )
-    """)
-
     default = [
         ("credit", 5000),
         ("tng", 0),
@@ -95,9 +74,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-
 init_db()
-
 
 # ================= HELPERS =================
 def get_value(key):
@@ -108,14 +85,12 @@ def get_value(key):
     conn.close()
     return v
 
-
 def set_value(key, value):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("UPDATE settings SET value=? WHERE key=?", (value, key))
     conn.commit()
     conn.close()
-
 
 def update_value(key, amount):
     conn = sqlite3.connect(DB)
@@ -124,86 +99,47 @@ def update_value(key, amount):
     conn.commit()
     conn.close()
 
-
 # ================= PROFIT =================
 def calc_profit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
-    c.execute("SELECT amount FROM records WHERE time >= ?", (today() + " 00:00:00",))
+    c.execute("SELECT amount FROM records WHERE time >= ?", (today_start(),))
     rows = c.fetchall()
-
     conn.close()
     return sum(-r[0] for r in rows)
 
+# ================= PUSH（安全版，不会炸）=================
+def send_push(title, msg):
+    print(f"[PUSH] {title}: {msg}")
 
 # ================= DAILY SETTLEMENT =================
 def daily_settlement():
+    profit = calc_profit()
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
-    date = today()
-    start = get_value("credit")
-    end = get_value("credit")
-    profit = calc_profit()
 
     c.execute("""
     INSERT OR REPLACE INTO daily_close
     (date, start_credit, end_credit, profit)
     VALUES (?,?,?,?)
-    """, (date, start, end, profit))
+    """, (today(), get_value("credit"), get_value("credit"), profit))
 
     conn.commit()
     conn.close()
 
-    send_telegram(f"📊 Daily Report\nDate: {date}\nProfit: {profit}")
+    send_push("Daily Report", f"Profit: {profit}")
 
-
-# ================= WEEKLY SETTLEMENT =================
-def weekly_settlement():
+# ================= WEEKLY =================
+def get_week_profit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
-    week_start = get_week_start()
-
-    c.execute("""
-    SELECT SUM(profit) FROM daily_close
-    WHERE date >= ?
-    """, (week_start,))
-
+    c.execute("SELECT SUM(profit) FROM daily_close")
     result = c.fetchone()[0]
-    profit = result if result else 0
-
-    c.execute("""
-    INSERT OR REPLACE INTO weekly_close
-    (week, profit)
-    VALUES (?,?)
-    """, (week_start, profit))
-
-    conn.commit()
     conn.close()
+    return result or 0
 
-    send_telegram(f"📈 Weekly Report\nWeek: {week_start}\nProfit: {profit}")
-
-
-# ================= SCHEDULER =================
-def job():
-    now = datetime.now(pytz.timezone("Asia/Kuala_Lumpur"))
-    t = now.strftime("%H:%M")
-
-    if t == "23:59":
-        daily_settlement()
-
-        if now.weekday() == 6:
-            weekly_settlement()
-
-
-scheduler = BackgroundScheduler()
-scheduler.add_job(job, 'interval', minutes=1)
-scheduler.start()
-
-
-# ================= FLASK =================
+# ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -213,7 +149,7 @@ def login():
         return "Login Failed"
     return render_template("login.html")
 
-
+# ================= HOME =================
 @app.route("/home")
 def home():
     if not session.get("login"):
@@ -238,7 +174,7 @@ def home():
         profit=calc_profit()
     )
 
-
+# ================= ADD =================
 @app.route("/add", methods=["POST"])
 def add():
     if not session.get("login"):
@@ -250,7 +186,7 @@ def add():
     remark = request.form["remark"]
 
     update_value("credit", -amount)
-    update_value(payment.lower(), amount)
+    update_value(payment, amount)
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -265,7 +201,7 @@ def add():
 
     return redirect("/home")
 
-
+# ================= DELETE =================
 @app.route("/delete/<int:id>")
 def delete(id):
     if not session.get("login"):
@@ -280,8 +216,7 @@ def delete(id):
     if row:
         amount, payment = row
         update_value("credit", amount)
-        update_value(payment.lower(), -amount)
-
+        update_value(payment, -amount)
         c.execute("DELETE FROM records WHERE id=?", (id,))
 
     conn.commit()
@@ -289,18 +224,10 @@ def delete(id):
 
     return redirect("/home")
 
-
-@app.route("/set_balance", methods=["POST"])
-def set_balance():
+# ================= WEEKLY PAGE =================
+@app.route("/weekly")
+def weekly():
     if not session.get("login"):
         return redirect("/")
 
-    credit = float(request.form["credit"])
-    set_value("credit", credit)
-
-    return redirect("/home")
-
-
-# ================= RUN =================
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    return render_template("weekly.html", profit=get_week_profit())
