@@ -1,14 +1,19 @@
-<h2>📊 报表</h2>
+<h2>{{title}}</h2>
 
-<p>💰 Credit：{{credit}}</p>
-<p>📊 总盈亏：{{total}}</p>
+<table border="1" width="100%">
+<tr>
+    <th>账号</th>
+    <th>金额</th>
+    <th>付款方式</th>
+    <th>时间</th>
+</tr>
 
-<h3>💳 付款方式</h3>
-
-<ul>
-{% for p in payment_stats %}
-<li>{{p[0]}} : {{p[1]}}</li>
+{% for r in data %}
+<tr>
+    <td>{{r[0]}}</td>
+    <td>{{r[1]}}</td>
+    <td>{{r[2]}}</td>
+    <td>{{r[3]}}</td>
+</tr>
 {% endfor %}
-</ul>
-
-<a href="/home">返回</a>
+</table>
