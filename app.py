@@ -2,11 +2,26 @@ from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
 from datetime import datetime, timedelta
 import pytz
+import requests
 
 app = Flask(__name__)
 app.secret_key = "Aaa8888"
 
 DB = "data.db"
+
+# ================= TELEGRAM CONFIG =================
+BOT_TOKEN = "PUT_YOUR_BOT_TOKEN_HERE"
+CHAT_ID = "PUT_YOUR_CHAT_ID_HERE"
+
+def send_telegram(msg):
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        requests.post(url, data={
+            "chat_id": CHAT_ID,
+            "text": msg
+        })
+    except:
+        pass
 
 # ================= TIME =================
 def now_time():
@@ -110,7 +125,7 @@ def calc_profit():
     conn.close()
     return sum(-r[0] for r in rows)
 
-# ================= DAILY CLOSE (防重复) =================
+# ================= DAILY CLOSE =================
 def daily_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -131,6 +146,10 @@ def daily_settlement():
 
     conn.commit()
     conn.close()
+
+    send_telegram(
+        f"📊 Daily Report\nDate: {date}\nProfit: {profit}"
+    )
 
 # ================= WEEKLY CLOSE =================
 def weekly_settlement():
@@ -160,11 +179,11 @@ def weekly_settlement():
     conn.commit()
     conn.close()
 
-# ================= PUSH (V4 核心) =================
-def send_push(title, msg):
-    print(f"[PUSH] {title}: {msg}")
+    send_telegram(
+        f"📈 Weekly Report\nWeek Start: {week}\nProfit: {profit}"
+    )
 
-# ================= AUTO CLOSE =================
+# ================= AUTO =================
 _last_run = None
 
 def auto_close_check():
@@ -173,23 +192,21 @@ def auto_close_check():
     tz = pytz.timezone("Asia/Kuala_LUMPUR")
     now = datetime.now(tz)
 
-    today_key = now.strftime("%Y-%m-%d")
-    time_key = now.strftime("%H:%M")
+    key = now.strftime("%Y-%m-%d")
+    t = now.strftime("%H:%M")
 
-    if _last_run == today_key:
+    if _last_run == key:
         return
 
-    if time_key == "23:59":
+    if t == "23:59":
         daily_settlement()
 
         if now.weekday() == 6:
             weekly_settlement()
 
-        send_push("Daily Report", f"Profit: {calc_profit()}")
+        _last_run = key
 
-        _last_run = today_key
-
-# ================= API (给前端图表用) =================
+# ================= API =================
 @app.route("/api/weekly")
 def api_weekly():
     conn = sqlite3.connect(DB)
@@ -197,7 +214,7 @@ def api_weekly():
 
     c.execute("""
     SELECT week, profit FROM weekly_close
-    ORDER BY week DESC LIMIT 8
+    ORDER BY week DESC LIMIT 10
     """)
 
     data = c.fetchall()
@@ -293,7 +310,7 @@ def delete(id):
 
     return redirect("/home")
 
-# ================= BALANCE =================
+# ================= SET BALANCE =================
 @app.route("/set_balance", methods=["POST"])
 def set_balance():
     if not session.get("login"):
