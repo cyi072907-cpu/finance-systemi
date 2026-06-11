@@ -19,11 +19,10 @@ def today():
 def today_start():
     return today() + " 00:00:00"
 
-def week_start():
-    today_dt = datetime.now(pytz.timezone("Asia/Kuala_Lumpur"))
-    start = today_dt - timedelta(days=today_dt.weekday())
-    return start.strftime("%Y-%m-%d") + " 00:00:00"
-
+def get_week_start():
+    d = datetime.now(pytz.timezone("Asia/Kuala_Lumpur"))
+    start = d - timedelta(days=d.weekday())
+    return start.strftime("%Y-%m-%d")
 
 # ================= DB =================
 def init_db():
@@ -51,8 +50,8 @@ def init_db():
     c.execute("""
     CREATE TABLE IF NOT EXISTS daily_close (
         date TEXT PRIMARY KEY,
-        open_balance REAL,
-        close_balance REAL,
+        start_credit REAL,
+        end_credit REAL,
         profit REAL
     )
     """)
@@ -61,15 +60,6 @@ def init_db():
     CREATE TABLE IF NOT EXISTS weekly_close (
         week TEXT PRIMARY KEY,
         profit REAL
-    )
-    """)
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS balance_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        old_value REAL,
-        new_value REAL,
-        time TEXT
     )
     """)
 
@@ -89,7 +79,6 @@ def init_db():
 
 init_db()
 
-
 # ================= HELPERS =================
 def get_value(key):
     conn = sqlite3.connect(DB)
@@ -99,14 +88,12 @@ def get_value(key):
     conn.close()
     return v
 
-
 def set_value(key, value):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("UPDATE settings SET value=? WHERE key=?", (value, key))
     conn.commit()
     conn.close()
-
 
 def update_value(key, amount):
     conn = sqlite3.connect(DB)
@@ -115,25 +102,14 @@ def update_value(key, amount):
     conn.commit()
     conn.close()
 
-
-def log_balance_change(old, new):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("INSERT INTO balance_log (old_value, new_value, time) VALUES (?,?,?)",
-              (old, new, now_time()))
-    conn.commit()
-    conn.close()
-
-
 # ================= PROFIT =================
-def calc_profit(start_time):
+def calc_profit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT amount FROM records WHERE time >= ?", (start_time,))
+    c.execute("SELECT amount FROM records WHERE time >= ?", (today_start(),))
     rows = c.fetchall()
     conn.close()
     return sum(-r[0] for r in rows)
-
 
 # ================= DAILY CLOSE =================
 def daily_settlement():
@@ -141,37 +117,55 @@ def daily_settlement():
     c = conn.cursor()
 
     date = today()
-    open_bal = get_value("credit")
-    close_bal = get_value("credit")
-    profit = calc_profit(today_start())
+    start = get_value("credit")
+    end = get_value("credit")
+    profit = calc_profit()
 
     c.execute("""
     INSERT OR REPLACE INTO daily_close
-    (date, open_balance, close_balance, profit)
+    (date, start_credit, end_credit, profit)
     VALUES (?,?,?,?)
-    """, (date, open_bal, close_bal, profit))
+    """, (date, start, end, profit))
 
     conn.commit()
     conn.close()
-
 
 # ================= WEEKLY CLOSE =================
 def weekly_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    week = today()[:10]
-    profit = calc_profit(week_start())
+    week_start = get_week_start()
+
+    c.execute("""
+    SELECT SUM(profit) FROM daily_close
+    WHERE date >= ?
+    """, (week_start,))
+
+    result = c.fetchone()[0]
+    profit = result if result else 0
 
     c.execute("""
     INSERT OR REPLACE INTO weekly_close
     (week, profit)
     VALUES (?,?)
-    """, (week, profit))
+    """, (week_start, profit))
 
     conn.commit()
     conn.close()
 
+# ================= AUTO CHECK =================
+def auto_close_check():
+    now = datetime.now(pytz.timezone("Asia/Kuala_LUMPUR"))
+    t = now.strftime("%H:%M")
+
+    # 每天23:59日结
+    if t >= "23:59":
+        daily_settlement()
+
+        # 星期日周结
+        if now.weekday() == 6:
+            weekly_settlement()
 
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
@@ -183,18 +177,20 @@ def login():
         return "Login Failed"
     return render_template("login.html")
 
-
 # ================= HOME =================
 @app.route("/home")
 def home():
     if not session.get("login"):
         return redirect("/")
 
+    auto_close_check()
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute("SELECT * FROM records ORDER BY id DESC LIMIT 20")
     data = c.fetchall()
+
     conn.close()
 
     return render_template(
@@ -205,9 +201,8 @@ def home():
         cash=get_value("cash"),
         bank=get_value("bank"),
         a=get_value("a"),
-        profit=calc_profit(today_start())
+        profit=calc_profit()
     )
-
 
 # ================= ADD =================
 @app.route("/add", methods=["POST"])
@@ -236,7 +231,6 @@ def add():
 
     return redirect("/home")
 
-
 # ================= DELETE =================
 @app.route("/delete/<int:id>")
 def delete(id):
@@ -253,6 +247,7 @@ def delete(id):
         amount, payment = row
         update_value("credit", amount)
         update_value(payment.lower(), -amount)
+
         c.execute("DELETE FROM records WHERE id=?", (id,))
 
     conn.commit()
@@ -260,21 +255,17 @@ def delete(id):
 
     return redirect("/home")
 
-
-# ================= BALANCE MANUAL SET =================
+# ================= SET BALANCE (手动改余额) =================
 @app.route("/set_balance", methods=["POST"])
 def set_balance():
     if not session.get("login"):
         return redirect("/")
 
-    new_balance = float(request.form["credit"])
-
-    old = get_value("credit")
-    set_value("credit", new_balance)
-    log_balance_change(old, new_balance)
+    credit = float(request.form["credit"])
+    set_value("credit", credit)
 
     return redirect("/home")
 
-
+# ================= RUN =================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
