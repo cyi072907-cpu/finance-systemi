@@ -1,2 +1,16 @@
 body {
+    font-family: Arial;
+    margin: 0;
+    padding: 10px;
+    background: #f5f5f5;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td, th {
+    border: 1px solid #ccc;
+    padding: 5px;
 }
