@@ -14,7 +14,7 @@ def now_time():
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
 
-# ================= INIT DB =================
+# ================= INIT =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -90,7 +90,7 @@ def log(action):
 
 
 # ================= DAILY OPEN =================
-def set_open_if_new_day():
+def set_open():
     today = now_time()[:10]
 
     conn = sqlite3.connect(DB)
@@ -102,7 +102,6 @@ def set_open_if_new_day():
     c.execute("SELECT value FROM settings WHERE key='credit'")
     credit = c.fetchone()[0]
 
-    # 每天刷新一次开盘
     c.execute("SELECT action FROM logs ORDER BY id DESC LIMIT 1")
     last = c.fetchone()
 
@@ -124,10 +123,18 @@ def calc_profit():
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form["password"] == "Aaa8888":
+
+        username = request.form["username"]
+        password = request.form["password"]
+
+        log(f"LOGIN {username}")
+
+        if password == "Aaa8888":
             session["login"] = True
             return redirect("/home")
+
         return "密码错误"
+
     return render_template("login.html")
 
 
@@ -137,7 +144,7 @@ def home():
     if not session.get("login"):
         return redirect("/")
 
-    set_open_if_new_day()
+    set_open()
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -221,7 +228,7 @@ def delete(id):
     return redirect("/home")
 
 
-# ================= REPORT =================
+# ================= REPORTS =================
 @app.route("/report/daily")
 def daily():
     if not session.get("login"):
