@@ -4,11 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Boss System V2 Final</title>
+<title>Boss System V2 FINAL</title>
 
 <!-- PWA -->
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#0f172a">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
@@ -39,7 +42,7 @@ body{
     border-radius:12px;
 }
 
-/* 盈亏 */
+/* profit */
 .profit-positive{
     color:#22c55e;
     font-size:22px;
@@ -92,7 +95,6 @@ a{
     text-decoration:none;
 }
 
-/* section title */
 .section{
     margin:10px;
 }
@@ -105,7 +107,7 @@ a{
 💰 Boss Finance System V2 FINAL
 </div>
 
-<!-- ===== BALANCE ===== -->
+<!-- ================= BALANCE ================= -->
 <div class="grid">
 
 <div class="card">
@@ -142,7 +144,16 @@ a{
 
 </div>
 
-<!-- ===== 手动改余额 ===== -->
+<!-- ================= WEEK BUTTON ================= -->
+<div class="card section">
+<h3>📊 Weekly Report</h3>
+
+<a href="/weekly">
+    <button>查看本周盈亏</button>
+</a>
+</div>
+
+<!-- ================= MANUAL BALANCE ================= -->
 <div class="card section">
 <h3>⚙️ 手动修改余额</h3>
 
@@ -152,7 +163,7 @@ a{
 </form>
 </div>
 
-<!-- ===== ADD ===== -->
+<!-- ================= ADD ================= -->
 <div class="card section">
 <h3>➕ Add Record</h3>
 
@@ -173,7 +184,7 @@ a{
 </form>
 </div>
 
-<!-- ===== RECORDS ===== -->
+<!-- ================= RECORDS ================= -->
 <div class="card section">
 <h3>📌 Records</h3>
 
@@ -198,13 +209,13 @@ a{
 </table>
 </div>
 
-<!-- ===== WEEK SUMMARY (预留UI) ===== -->
+<!-- ================= CHART ================= -->
 <div class="card section">
-<h3>📊 本周总结</h3>
-<p>（下一步我会帮你接 weekly_close 数据）</p>
+<h3>📈 Weekly Trend</h3>
+<canvas id="profitChart"></canvas>
 </div>
 
-<!-- ===== PWA ===== -->
+<!-- ================= PWA ================= -->
 <script>
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/static/service-worker.js")
@@ -212,16 +223,7 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 
-</body>
-</html>
-<a href="/weekly">
-<button>📊 Weekly Report</button>
-</a>
-<script src="/static/push.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<div class="card">
-<canvas id="profitChart"></canvas>
-</div>
+<!-- ================= CHART JS ================= -->
 <script>
 const ctx = document.getElementById('profitChart');
 
@@ -232,8 +234,12 @@ new Chart(ctx, {
         datasets: [{
             label: 'Weekly Profit',
             data: [100,200,-50,300,-100,400,250],
-            borderColor: '#22c55e'
+            borderColor: '#22c55e',
+            tension: 0.3
         }]
     }
 });
 </script>
+
+</body>
+</html>
