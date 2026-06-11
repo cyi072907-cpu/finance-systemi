@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 
 app = Flask(__name__)
@@ -15,8 +15,12 @@ def now_time():
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def today():
+    return now_time()[:10]
+
+
 def today_start():
-    return now_time()[:10] + " 00:00:00"
+    return today() + " 00:00:00"
 
 
 # ================= DB INIT =================
@@ -43,19 +47,10 @@ def init_db():
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        action TEXT,
-        time TEXT
-    )
-    """)
-
-    c.execute("""
     CREATE TABLE IF NOT EXISTS daily_close (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT,
-        open_credit REAL,
-        close_credit REAL,
+        date TEXT PRIMARY KEY,
+        start_credit REAL,
+        end_credit REAL,
         profit REAL
     )
     """)
@@ -96,44 +91,35 @@ def update_value(key, amount):
     conn.close()
 
 
-def log(action):
+# ================= PROFIT =================
+def calc_profit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("INSERT INTO logs (action, time) VALUES (?,?)", (action, now_time()))
-    conn.commit()
-    conn.close()
 
-
-# ================= PROFIT (正确逻辑) =================
-# +amount = 客人赢 = 你亏
-# -amount = 客人输 = 你赚
-def calc_profit(start_time):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT amount FROM records WHERE time >= ?", (start_time,))
+    c.execute("SELECT amount FROM records WHERE time >= ?", (today_start(),))
     rows = c.fetchall()
+
     conn.close()
 
     return sum(-r[0] for r in rows)
 
 
-# ================= 日结 =================
+# ================= DAILY SETTLEMENT =================
 def daily_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    today = now_time()[:10]
+    date = today()
 
-    c.execute("SELECT value FROM settings WHERE key='credit'")
-    open_credit = c.fetchone()[0]
-
-    profit = calc_profit(today_start())
-    close_credit = open_credit
+    start = get_value("credit")
+    end = get_value("credit")
+    profit = calc_profit()
 
     c.execute("""
-        INSERT OR IGNORE INTO daily_close (date, open_credit, close_credit, profit)
-        VALUES (?,?,?,?)
-    """, (today, open_credit, close_credit, profit))
+    INSERT OR REPLACE INTO daily_close
+    (date, start_credit, end_credit, profit)
+    VALUES (?,?,?,?)
+    """, (date, start, end, profit))
 
     conn.commit()
     conn.close()
@@ -173,7 +159,7 @@ def home():
         cash=get_value("cash"),
         bank=get_value("bank"),
         a=get_value("a"),
-        profit=calc_profit(today_start())
+        profit=calc_profit()
     )
 
 
@@ -188,18 +174,15 @@ def add():
     payment = request.form["payment"]
     remark = request.form["remark"]
 
-    # ✔ 正确逻辑
     update_value("credit", -amount)
     update_value(payment.lower(), amount)
-
-    log(f"ADD {account} {amount}")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute("""
-        INSERT INTO records (account, amount, payment, remark, time)
-        VALUES (?,?,?,?,?)
+    INSERT INTO records (account, amount, payment, remark, time)
+    VALUES (?,?,?,?,?)
     """, (account, amount, payment, remark, now_time()))
 
     conn.commit()
@@ -226,8 +209,6 @@ def delete(id):
         update_value("credit", amount)
         update_value(payment.lower(), -amount)
 
-        log(f"DELETE {id}")
-
         c.execute("DELETE FROM records WHERE id=?", (id,))
 
     conn.commit()
@@ -236,21 +217,5 @@ def delete(id):
     return redirect("/home")
 
 
-# ================= REPORT =================
-@app.route("/report/daily")
-def report_daily():
-    if not session.get("login"):
-        return redirect("/")
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT * FROM records WHERE time >= ?", (today_start(),))
-    data = c.fetchall()
-    conn.close()
-
-    return render_template("reports.html", data=data, title="Daily Report")
-
-
-# ================= RUN =================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
