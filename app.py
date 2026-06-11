@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, session
 import sqlite3
 from datetime import datetime, timedelta
 import pytz
+from apscheduler.schedulers.background import BackgroundScheduler
 import requests
 
 app = Flask(__name__)
@@ -9,44 +10,36 @@ app.secret_key = "Aaa8888"
 
 DB = "data.db"
 
-# ================== 填这里 ==================
+# ================= TELEGRAM =================
 BOT_TOKEN = 8660820217:AAFCfgnb-J6c7AdB6j2OABIkHNtqE4flHxo
 CHAT_ID = 6691555924
-# ==========================================
 
+
+def send_telegram(msg):
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        requests.post(url, data={
+            "chat_id": CHAT_ID,
+            "text": msg
+        })
+    except Exception as e:
+        print("Telegram Error:", e)
 
 # ================= TIME =================
 def now_time():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
+
 def today():
     return now_time()[:10]
 
-def today_start():
-    return today() + " 00:00:00"
 
 def get_week_start():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     d = datetime.now(tz)
     start = d - timedelta(days=d.weekday())
     return start.strftime("%Y-%m-%d")
-
-
-# ================= TELEGRAM =================
-def send_telegram(msg):
-    if BOT_TOKEN == "PUT_YOUR_BOT_TOKEN_HERE" or CHAT_ID == "PUT_YOUR_CHAT_ID_HERE":
-        print("Telegram not configured")
-        return
-
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    try:
-        requests.post(url, data={
-            "chat_id": CHAT_ID,
-            "text": msg
-        })
-    except:
-        pass
 
 
 # ================= DB =================
@@ -102,6 +95,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 init_db()
 
 
@@ -114,12 +108,14 @@ def get_value(key):
     conn.close()
     return v
 
+
 def set_value(key, value):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("UPDATE settings SET value=? WHERE key=?", (value, key))
     conn.commit()
     conn.close()
+
 
 def update_value(key, amount):
     conn = sqlite3.connect(DB)
@@ -133,13 +129,15 @@ def update_value(key, amount):
 def calc_profit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT amount FROM records WHERE time >= ?", (today_start(),))
+
+    c.execute("SELECT amount FROM records WHERE time >= ?", (today() + " 00:00:00",))
     rows = c.fetchall()
+
     conn.close()
     return sum(-r[0] for r in rows)
 
 
-# ================= DAILY =================
+# ================= DAILY SETTLEMENT =================
 def daily_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -158,12 +156,10 @@ def daily_settlement():
     conn.commit()
     conn.close()
 
-    send_telegram(
-        f"📊 Daily Report\nDate: {date}\nProfit: {profit}"
-    )
+    send_telegram(f"📊 Daily Report\nDate: {date}\nProfit: {profit}")
 
 
-# ================= WEEKLY =================
+# ================= WEEKLY SETTLEMENT =================
 def weekly_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -187,13 +183,11 @@ def weekly_settlement():
     conn.commit()
     conn.close()
 
-    send_telegram(
-        f"📈 Weekly Report\nWeek: {week_start}\nProfit: {profit}"
-    )
+    send_telegram(f"📈 Weekly Report\nWeek: {week_start}\nProfit: {profit}")
 
 
-# ================= AUTO CHECK =================
-def auto_close_check():
+# ================= SCHEDULER =================
+def job():
     now = datetime.now(pytz.timezone("Asia/Kuala_Lumpur"))
     t = now.strftime("%H:%M")
 
@@ -204,7 +198,12 @@ def auto_close_check():
             weekly_settlement()
 
 
-# ================= ROUTES =================
+scheduler = BackgroundScheduler()
+scheduler.add_job(job, 'interval', minutes=1)
+scheduler.start()
+
+
+# ================= FLASK =================
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -220,12 +219,12 @@ def home():
     if not session.get("login"):
         return redirect("/")
 
-    auto_close_check()
-
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("SELECT * FROM records ORDER BY id DESC LIMIT 20")
     data = c.fetchall()
+
     conn.close()
 
     return render_template(
@@ -255,14 +254,14 @@ def add():
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("""
     INSERT INTO records (account, amount, payment, remark, time)
     VALUES (?,?,?,?,?)
     """, (account, amount, payment, remark, now_time()))
+
     conn.commit()
     conn.close()
-
-    send_telegram(f"➕ New Record\n{account} | {amount} | {payment}")
 
     return redirect("/home")
 
@@ -282,6 +281,7 @@ def delete(id):
         amount, payment = row
         update_value("credit", amount)
         update_value(payment.lower(), -amount)
+
         c.execute("DELETE FROM records WHERE id=?", (id,))
 
     conn.commit()
@@ -301,5 +301,6 @@ def set_balance():
     return redirect("/home")
 
 
+# ================= RUN =================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
