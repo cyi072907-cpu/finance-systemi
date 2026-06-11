@@ -1,0 +1,6 @@
+{
+  "name": "Boss Ledger",
+  "short_name": "Ledger",
+  "start_url": "/home",
+  "display": "standalone"
+}
