@@ -3,75 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>系统</title>
+<title>Boss System</title>
 </head>
 
 <body style="font-family:Arial;padding:10px">
 
 <h2>💰 Credit：{{credit}}</h2>
 
-<a href="/reports">📊 报表</a> |
-<a href="/search">🔍 查询</a> |
-<a href="/logout">退出</a>
-
-<hr>
-
-<form action="/add" method="POST">
-<input name="account" placeholder="账号"><br><br>
-<input name="amount" placeholder="+100 / -100"><br><br>
-
-<select name="payment">
-<option>TNG</option>
-<option>Cash</option>
-<option>Bank</option>
-<option>Name</option>
-</select><br><br>
-
-<input name="remark" placeholder="备注"><br><br>
-
-<button>提交</button>
-</form>
-
-<hr>
-
-<table border="1" width="100%">
-<tr>
-<th>时间</th>
-<th>账号</th>
-<th>金额</th>
-<th>付款</th>
-<th>备注</th>
-</tr>
-
-{% for r in data %}
-<tr>
-<td>{{r[1]}}</td>
-<td>{{r[2]}}</td>
-<td>{{r[3]}}</td>
-<td>{{r[4]}}</td>
-<td>{{r[5]}}</td>
-</tr>
-{% endfor %}
-</table>
-
-</body>
-</html>
-
-<a href="/report/daily">日报</a>
-<a href="/report/weekly">周报</a>
-<a href="/report/monthly">月报</a>
-<a href="/history">历史记录</a>
-<h2>Boss System</h2>
-
-<a href="/home">首页</a>
-<a href="/history">历史查询</a>
-<a href="/report/daily">日报</a>
-<a href="/report/weekly">周报</a>
-<a href="/report/monthly">月报</a>
-<h2>💰 Boss Dashboard</h2>
-
 <div>
-    <p>Credit: {{credit}}</p>
     <p>TNG: {{tng}}</p>
     <p>CASH: {{cash}}</p>
     <p>BANK: {{bank}}</p>
@@ -80,6 +19,7 @@
 
 <hr>
 
+<a href="/home">首页</a>
 <a href="/history">历史查询</a>
 <a href="/report/daily">日报</a>
 <a href="/report/weekly">周报</a>
@@ -87,14 +27,34 @@
 
 <hr>
 
+<form action="/add" method="POST">
+<input name="account" placeholder="账号"><br><br>
+
+<input name="amount" type="number" step="0.01" placeholder="+100 / -100"><br><br>
+
+<select name="payment">
+<option>TNG</option>
+<option>Cash</option>
+<option>Bank</option>
+<option>A</option>
+</select><br><br>
+
+<input name="remark" placeholder="备注"><br><br>
+
+<button type="submit">提交</button>
+</form>
+
+<hr>
+
 <h3>最近记录</h3>
 
-<table>
+<table border="1" width="100%">
 <tr>
     <th>账号</th>
     <th>金额</th>
     <th>付款方式</th>
     <th>时间</th>
+    <th>操作</th>
 </tr>
 
 {% for r in data %}
@@ -103,11 +63,20 @@
     <td>{{r[2]}}</td>
     <td>{{r[3]}}</td>
     <td>{{r[5]}}</td>
+    <td>
+        <a href="/delete/{{r[0]}}" onclick="return confirm('确定删除这条记录吗？')">
+            删除
+        </a>
+    </td>
 </tr>
 {% endfor %}
 </table>
+
 <script>
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/static/service-worker.js");
 }
 </script>
+
+</body>
+</html>
