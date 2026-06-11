@@ -11,7 +11,7 @@ DB = "data.db"
 
 # ================= TELEGRAM CONFIG =================
 BOT_TOKEN = 8660820217:AAFCfgnb-J6c7AdB6j2OABIkHNtqE4flHxo
-CHAT_ID = "PUT_YOUR_CHAT_ID_HERE"
+CHAT_ID =  6691555924
 
 def send_telegram(msg):
     try:
