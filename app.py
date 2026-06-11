@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 app = Flask(__name__)
@@ -18,7 +18,6 @@ def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    # records
     c.execute("""
     CREATE TABLE IF NOT EXISTS records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,7 +29,6 @@ def init_db():
     )
     """)
 
-    # settings
     c.execute("""
     CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
@@ -38,7 +36,6 @@ def init_db():
     )
     """)
 
-    # logs
     c.execute("""
     CREATE TABLE IF NOT EXISTS logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +60,7 @@ def init_db():
 
 init_db()
 
-# ================= DB HELPERS =================
+# ================= HELPERS =================
 def get_value(key):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -95,7 +92,6 @@ def calc_profit(start_time):
     c.execute("SELECT amount FROM records WHERE time >= ?", (start_time,))
     rows = c.fetchall()
     conn.close()
-
     return sum(-r[0] for r in rows)
 
 
@@ -129,22 +125,16 @@ def home():
         c.execute("SELECT value FROM settings WHERE key=?", (k,))
         return c.fetchone()[0]
 
-    credit = get("credit")
-    tng = get("tng")
-    cash = get("cash")
-    bank = get("bank")
-    a = get("a")
-
     conn.close()
 
     return render_template(
         "index.html",
         data=data,
-        credit=credit,
-        tng=tng,
-        cash=cash,
-        bank=bank,
-        a=a,
+        credit=get_value("credit"),
+        tng=get_value("tng"),
+        cash=get_value("cash"),
+        bank=get_value("bank"),
+        a=get_value("a"),
         profit=calc_profit_today()
     )
 
@@ -220,31 +210,26 @@ def get_range_data(start_time):
     conn.close()
     return data
 
-# ================= REPORT =================
+# ================= REPORTS =================
 @app.route("/report/daily")
 def daily_report():
     if not session.get("login"):
         return redirect("/")
-
     today = now_time()[:10] + " 00:00:00"
-    data = get_range_data(today)
-
-    return render_template("reports.html", data=data, title="Daily Report")
-
+    return render_template("reports.html",
+                           data=get_range_data(today),
+                           title="Daily Report")
 
 @app.route("/report/weekly")
 def weekly_report():
     if not session.get("login"):
         return redirect("/")
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT account, amount, payment, time FROM records ORDER BY id DESC")
-    data = c.fetchall()
-    conn.close()
+    start = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
 
-    return render_template("reports.html", data=data, title="Weekly Report")
-
+    return render_template("reports.html",
+                           data=get_range_data(start),
+                           title="Weekly Report")
 
 @app.route("/report/monthly")
 def monthly_report():
@@ -306,7 +291,6 @@ def history():
 
         c.execute(query, params)
         data = c.fetchall()
-
         conn.close()
 
     return render_template("history.html", data=data)
