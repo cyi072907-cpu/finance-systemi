@@ -1,6 +1,1 @@
 flask
-pytz
-requests
-psycopg-binary
-gunicorn
-apscheduler
