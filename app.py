@@ -20,7 +20,8 @@ def today_start():
     return today() + " 00:00:00"
 
 def get_week_start():
-    d = datetime.now(pytz.timezone("Asia/Kuala_Lumpur"))
+    tz = pytz.timezone("Asia/Kuala_Lumpur")
+    d = datetime.now(tz)
     start = d - timedelta(days=d.weekday())
     return start.strftime("%Y-%m-%d")
 
@@ -102,6 +103,10 @@ def update_value(key, amount):
     conn.commit()
     conn.close()
 
+# ================= PUSH =================
+def send_push(title, msg):
+    print(f"[PUSH] {title}: {msg}")
+
 # ================= PROFIT =================
 def calc_profit():
     conn = sqlite3.connect(DB)
@@ -111,7 +116,7 @@ def calc_profit():
     conn.close()
     return sum(-r[0] for r in rows)
 
-# ================= DAILY CLOSE =================
+# ================= DAILY =================
 def daily_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -130,11 +135,9 @@ def daily_settlement():
     conn.commit()
     conn.close()
 
-send_push(
-    "Daily Report",
-    f"Today Profit: {profit}"
-)
-# ================= WEEKLY CLOSE =================
+    send_push("Daily Report", f"Today Profit: {profit}")
+
+# ================= WEEKLY =================
 def weekly_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -142,16 +145,14 @@ def weekly_settlement():
     week_start = get_week_start()
 
     c.execute("""
-    SELECT SUM(profit) FROM daily_close
-    WHERE date >= ?
+    SELECT SUM(profit) FROM daily_close WHERE date >= ?
     """, (week_start,))
 
     result = c.fetchone()[0]
     profit = result if result else 0
 
     c.execute("""
-    INSERT OR REPLACE INTO weekly_close
-    (week, profit)
+    INSERT OR REPLACE INTO weekly_close (week, profit)
     VALUES (?,?)
     """, (week_start, profit))
 
@@ -160,14 +161,12 @@ def weekly_settlement():
 
 # ================= AUTO CHECK =================
 def auto_close_check():
-    now = datetime.now(pytz.timezone("Asia/Kuala_LUMPUR"))
+    now = datetime.now(pytz.timezone("Asia/Kuala_Lumpur"))
     t = now.strftime("%H:%M")
 
-    # 每天23:59日结
     if t >= "23:59":
         daily_settlement()
 
-        # 星期日周结
         if now.weekday() == 6:
             weekly_settlement()
 
@@ -191,10 +190,8 @@ def home():
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT * FROM records ORDER BY id DESC LIMIT 20")
     data = c.fetchall()
-
     conn.close()
 
     return render_template(
@@ -251,7 +248,6 @@ def delete(id):
         amount, payment = row
         update_value("credit", amount)
         update_value(payment.lower(), -amount)
-
         c.execute("DELETE FROM records WHERE id=?", (id,))
 
     conn.commit()
@@ -259,21 +255,17 @@ def delete(id):
 
     return redirect("/home")
 
-# ================= SET BALANCE (手动改余额) =================
+# ================= SET BALANCE =================
 @app.route("/set_balance", methods=["POST"])
 def set_balance():
     if not session.get("login"):
         return redirect("/")
 
-    credit = float(request.form["credit"])
-    set_value("credit", credit)
-
+    set_value("credit", float(request.form["credit"]))
     return redirect("/home")
 
-# ================= RUN =================
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-    @app.route("/weekly")
+# ================= WEEKLY PAGE =================
+@app.route("/weekly")
 def weekly():
     if not session.get("login"):
         return redirect("/")
@@ -289,6 +281,7 @@ def weekly():
     profit = result if result else 0
 
     return render_template("weekly.html", profit=profit)
-    def send_push(title, msg):
-    print(f"[PUSH] {title}: {msg}")
-    
+
+# ================= RUN =================
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
