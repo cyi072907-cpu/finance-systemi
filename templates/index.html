@@ -218,3 +218,22 @@ if ("serviceWorker" in navigator) {
 <button>📊 Weekly Report</button>
 </a>
 <script src="/static/push.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="card">
+<canvas id="profitChart"></canvas>
+</div>
+<script>
+const ctx = document.getElementById('profitChart');
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+        datasets: [{
+            label: 'Weekly Profit',
+            data: [100,200,-50,300,-100,400,250],
+            borderColor: '#22c55e'
+        }]
+    }
+});
+</script>
