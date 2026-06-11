@@ -200,3 +200,56 @@ def logout():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+@app.route("/reports")
+def reports():
+    if not session.get("login"):
+        return redirect("/")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    # 今日
+    c.execute("SELECT SUM(amount) FROM records WHERE date(time)=date('now','localtime')")
+    today_profit = c.fetchone()[0] or 0
+
+    # 本周
+    c.execute("""
+        SELECT SUM(amount) FROM records
+        WHERE date(time) >= date('now','weekday 1','-7 days')
+    """)
+    week_profit = c.fetchone()[0] or 0
+
+    # 付款方式统计
+    c.execute("SELECT payment, SUM(amount) FROM records GROUP BY payment")
+    payment_stats = c.fetchall()
+
+    conn.close()
+
+    return render_template("reports.html",
+        today_profit=today_profit,
+        week_profit=week_profit,
+        credit=get_credit(),
+        payment_stats=payment_stats
+    )@app.route("/search", methods=["GET", "POST"])
+def search():
+    if not session.get("login"):
+        return redirect("/")
+
+    results = []
+
+    if request.method == "POST":
+        query_date = request.form["date"]
+
+        conn = sqlite3.connect(DB)
+        c = conn.cursor()
+
+        c.execute("""
+            SELECT * FROM records
+            WHERE date(time)=?
+            ORDER BY id DESC
+        """, (query_date,))
+
+        results = c.fetchall()
+        conn.close()
+
+    return render_template("search.html", results=results)
