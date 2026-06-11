@@ -103,10 +103,6 @@ def update_value(key, amount):
     conn.commit()
     conn.close()
 
-# ================= PUSH =================
-def send_push(title, msg):
-    print(f"[PUSH] {title}: {msg}")
-
 # ================= PROFIT =================
 def calc_profit():
     conn = sqlite3.connect(DB)
@@ -116,7 +112,7 @@ def calc_profit():
     conn.close()
     return sum(-r[0] for r in rows)
 
-# ================= DAILY =================
+# ================= DAILY CLOSE =================
 def daily_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -135,9 +131,7 @@ def daily_settlement():
     conn.commit()
     conn.close()
 
-    send_push("Daily Report", f"Today Profit: {profit}")
-
-# ================= WEEKLY =================
+# ================= WEEKLY CLOSE =================
 def weekly_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -145,14 +139,16 @@ def weekly_settlement():
     week_start = get_week_start()
 
     c.execute("""
-    SELECT SUM(profit) FROM daily_close WHERE date >= ?
+    SELECT SUM(profit) FROM daily_close
+    WHERE date >= ?
     """, (week_start,))
 
     result = c.fetchone()[0]
     profit = result if result else 0
 
     c.execute("""
-    INSERT OR REPLACE INTO weekly_close (week, profit)
+    INSERT OR REPLACE INTO weekly_close
+    (week, profit)
     VALUES (?,?)
     """, (week_start, profit))
 
@@ -161,10 +157,11 @@ def weekly_settlement():
 
 # ================= AUTO CHECK =================
 def auto_close_check():
-    now = datetime.now(pytz.timezone("Asia/Kuala_Lumpur"))
+    now = datetime.now(pytz.timezone("Asia/Kuala_LUMPUR"))
     t = now.strftime("%H:%M")
 
-    if t >= "23:59":
+    # ⚠️ 简化版本：只允许触发一次逻辑（避免重复）
+    if t == "23:59":
         daily_settlement()
 
         if now.weekday() == 6:
@@ -190,8 +187,10 @@ def home():
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("SELECT * FROM records ORDER BY id DESC LIMIT 20")
     data = c.fetchall()
+
     conn.close()
 
     return render_template(
@@ -255,13 +254,15 @@ def delete(id):
 
     return redirect("/home")
 
-# ================= SET BALANCE =================
+# ================= MANUAL SET BALANCE =================
 @app.route("/set_balance", methods=["POST"])
 def set_balance():
     if not session.get("login"):
         return redirect("/")
 
-    set_value("credit", float(request.form["credit"]))
+    credit = float(request.form["credit"])
+    set_value("credit", credit)
+
     return redirect("/home")
 
 # ================= WEEKLY PAGE =================
