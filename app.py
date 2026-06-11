@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 
 app = Flask(__name__)
@@ -13,6 +13,8 @@ def now_time():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
+def today_date():
+    return now_time()[:10]
 
 # ================= INIT =================
 def init_db():
@@ -45,6 +47,17 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS daily_summary (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT UNIQUE,
+        open_credit REAL,
+        close_credit REAL,
+        profit REAL,
+        time TEXT
+    )
+    """)
+
     default = [
         ("credit", 5000),
         ("open_credit", 5000),
@@ -62,7 +75,6 @@ def init_db():
 
 init_db()
 
-
 # ================= HELPERS =================
 def get_value(key):
     conn = sqlite3.connect(DB)
@@ -72,14 +84,12 @@ def get_value(key):
     conn.close()
     return v
 
-
 def update_value(key, amount):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("UPDATE settings SET value = value + ? WHERE key=?", (amount, key))
     conn.commit()
     conn.close()
-
 
 def log(action):
     conn = sqlite3.connect(DB)
@@ -88,52 +98,63 @@ def log(action):
     conn.commit()
     conn.close()
 
-
-# ================= PROFIT =================
-def calc_profit():
-    open_credit = get_value("open_credit")
-    current = get_value("credit")
-    return open_credit - current
-
-
-# ================= DAILY CLOSE =================
-@app.route("/close_today")
-def close_today():
-    if not session.get("login"):
-        return redirect("/")
-
+# ================= DAILY SYSTEM =================
+def ensure_open():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT value FROM settings WHERE key='credit'")
-    credit = c.fetchone()[0]
+    c.execute("SELECT * FROM daily_summary WHERE date=?", (today_date(),))
+    row = c.fetchone()
 
-    c.execute("UPDATE settings SET value=? WHERE key='open_credit'", (credit,))
+    if not row:
+        credit = get_value("credit")
+
+        c.execute("""
+            INSERT INTO daily_summary (date, open_credit, close_credit, profit, time)
+            VALUES (?,?,?,?,?)
+        """, (today_date(), credit, credit, 0, now_time()))
+
+        conn.commit()
+
+    conn.close()
+
+def update_close():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    open_credit = get_value("open_credit")
+    close_credit = get_value("credit")
+    profit = open_credit - close_credit
+
+    c.execute("""
+        UPDATE daily_summary
+        SET close_credit=?, profit=?, time=?
+        WHERE date=?
+    """, (close_credit, profit, now_time(), today_date()))
+
     conn.commit()
     conn.close()
 
-    log("CLOSE DAY")
+def get_today_profit():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-    return redirect("/home")
+    c.execute("SELECT profit FROM daily_summary WHERE date=?", (today_date(),))
+    row = c.fetchone()
 
+    conn.close()
+    return row[0] if row else 0
 
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        log(f"LOGIN {username}")
-
-        if password == "Aaa8888":
+        if request.form["username"] and request.form["password"] == "Aaa8888":
             session["login"] = True
             return redirect("/home")
-
         return "密码错误"
 
     return render_template("login.html")
-
 
 # ================= HOME =================
 @app.route("/home")
@@ -141,16 +162,17 @@ def home():
     if not session.get("login"):
         return redirect("/")
 
+    ensure_open()
+    update_close()
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute("SELECT * FROM records ORDER BY id DESC LIMIT 20")
     data = c.fetchall()
-
     conn.close()
 
-    profit = calc_profit()
-    profit_status = "green" if profit >= 0 else "red"
+    profit = get_today_profit()
 
     return render_template(
         "index.html",
@@ -160,10 +182,8 @@ def home():
         cash=get_value("cash"),
         bank=get_value("bank"),
         a=get_value("a"),
-        profit=profit,
-        profit_status=profit_status
+        profit=profit
     )
-
 
 # ================= ADD =================
 @app.route("/add", methods=["POST"])
@@ -194,7 +214,6 @@ def add():
 
     return redirect("/home")
 
-
 # ================= DELETE =================
 @app.route("/delete/<int:id>")
 def delete(id):
@@ -222,107 +241,21 @@ def delete(id):
 
     return redirect("/home")
 
-
-# ================= REPORT HELP =================
-def get_range_data(start_time):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT account, amount, payment, time
-        FROM records
-        WHERE time >= ?
-        ORDER BY id DESC
-    """, (start_time,))
-
-    data = c.fetchall()
-    conn.close()
-    return data
-
-
 # ================= REPORT =================
-@app.route("/report/daily")
-def daily():
-    if not session.get("login"):
-        return redirect("/")
-
-    today = now_time()[:10] + " 00:00:00"
-
-    return render_template(
-        "reports.html",
-        data=get_range_data(today),
-        title="Daily Report"
-    )
-
-
-@app.route("/report/weekly")
-def weekly():
-    if not session.get("login"):
-        return redirect("/")
-
-    start = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
-
-    return render_template(
-        "reports.html",
-        data=get_range_data(start),
-        title="Weekly Report"
-    )
-
-
-@app.route("/report/monthly")
-def monthly():
-    if not session.get("login"):
-        return redirect("/")
-
-    month = now_time()[:7]
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT account, amount, payment, time
-        FROM records
-        WHERE time LIKE ?
-        ORDER BY id DESC
-    """, (month + "%",))
-
-    data = c.fetchall()
-    conn.close()
-
-    return render_template("reports.html", data=data, title="Monthly Report")
-
-
-# ================= HISTORY =================
-@app.route("/history", methods=["GET", "POST"])
+@app.route("/history")
 def history():
     if not session.get("login"):
         return redirect("/")
 
-    data = []
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-    if request.method == "POST":
-        conn = sqlite3.connect(DB)
-        c = conn.cursor()
+    c.execute("SELECT account, amount, payment, time FROM records ORDER BY id DESC")
+    data = c.fetchall()
 
-        query = "SELECT account, amount, payment, time FROM records WHERE 1=1"
-        params = []
-
-        if request.form.get("account"):
-            query += " AND account=?"
-            params.append(request.form["account"])
-
-        if request.form.get("payment"):
-            query += " AND payment=?"
-            params.append(request.form["payment"])
-
-        query += " ORDER BY id DESC"
-
-        c.execute(query, params)
-        data = c.fetchall()
-        conn.close()
+    conn.close()
 
     return render_template("history.html", data=data)
-
 
 # ================= RUN =================
 if __name__ == "__main__":
