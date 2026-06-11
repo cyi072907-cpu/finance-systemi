@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>企业管理系统</title>
+<title>企业账本系统</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -35,44 +35,28 @@ body {
     border-radius: 12px;
 }
 
-button {
-    background: #22c55e;
-    border: none;
-    padding: 10px;
-    color: white;
-    border-radius: 8px;
-    margin: 5px 0;
-}
-
 table {
     width: 100%;
     border-collapse: collapse;
     background: #111827;
-    margin-top: 10px;
 }
 
-th {
-    background: #1f2937;
-    padding: 8px;
-}
-
-td {
+th, td {
     padding: 8px;
     border-bottom: 1px solid #222;
 }
 
 a {
     color: #38bdf8;
-    margin-right: 10px;
     text-decoration: none;
-    font-weight: bold;
+    margin-right: 10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">💰 企业管理系统</div>
+<div class="header">💰 企业账本系统</div>
 
 <div class="grid">
 
@@ -83,7 +67,7 @@ a {
 
 <div class="card">
 <h3>今日盈亏</h3>
-<h2 style="color: {{ 'lime' if profit_status=='green' else 'red' }}">
+<h2 style="color: {{ 'lime' if profit >= 0 else 'red' }}">
 {{profit}}
 </h2>
 </div>
@@ -96,32 +80,8 @@ a {
 </div>
 
 <div style="padding:10px;">
-<a href="/close_today" onclick="return confirm('确认结算今天吗？')">🧾 今日结算</a>
-<a href="/report/daily">日报</a>
-<a href="/report/weekly">周报</a>
-<a href="/report/monthly">月报</a>
-<a href="/history">历史</a>
+<a href="/history">历史记录</a>
 </div>
-
-<hr>
-
-<div style="padding:10px;">
-<canvas id="myChart"></canvas>
-</div>
-
-<script>
-new Chart(document.getElementById("myChart"), {
-    type: 'bar',
-    data: {
-        labels: ['TNG','CASH','BANK','A'],
-        datasets: [{
-            label: 'Balance',
-            data: [{{tng}},{{cash}},{{bank}},{{a}}],
-            backgroundColor: ['#10b981','#f97316','#3b82f6','#a855f7']
-        }]
-    }
-});
-</script>
 
 <hr>
 
@@ -130,11 +90,10 @@ new Chart(document.getElementById("myChart"), {
 
 <table>
 <tr>
-<th>Account</th>
-<th>Amount</th>
-<th>Payment</th>
-<th>Time</th>
-<th>Action</th>
+<th>账号</th>
+<th>金额</th>
+<th>付款</th>
+<th>时间</th>
 </tr>
 
 {% for r in data %}
@@ -142,8 +101,7 @@ new Chart(document.getElementById("myChart"), {
 <td>{{r[1]}}</td>
 <td>{{r[2]}}</td>
 <td>{{r[3]}}</td>
-<td>{{r[5]}}</td>
-<td><a href="/delete/{{r[0]}}" onclick="return confirm('Delete?')">Del</a></td>
+<td>{{r[3]}}</td>
 </tr>
 {% endfor %}
 </table>
