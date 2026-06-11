@@ -112,18 +112,25 @@ def calc_profit():
     conn.close()
     return sum(-r[0] for r in rows)
 
-# ================= DAILY CLOSE =================
+# ================= DAILY CLOSE (防重复) =================
 def daily_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     date = today()
+
+    # 防重复执行
+    c.execute("SELECT date FROM daily_close WHERE date=?", (date,))
+    if c.fetchone():
+        conn.close()
+        return
+
     start = get_value("credit")
     end = get_value("credit")
     profit = calc_profit()
 
     c.execute("""
-    INSERT OR REPLACE INTO daily_close
+    INSERT INTO daily_close
     (date, start_credit, end_credit, profit)
     VALUES (?,?,?,?)
     """, (date, start, end, profit))
@@ -131,12 +138,17 @@ def daily_settlement():
     conn.commit()
     conn.close()
 
-# ================= WEEKLY CLOSE =================
+# ================= WEEKLY CLOSE (防重复) =================
 def weekly_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     week_start = get_week_start()
+
+    c.execute("SELECT week FROM weekly_close WHERE week=?", (week_start,))
+    if c.fetchone():
+        conn.close()
+        return
 
     c.execute("""
     SELECT SUM(profit) FROM daily_close
@@ -147,7 +159,7 @@ def weekly_settlement():
     profit = result if result else 0
 
     c.execute("""
-    INSERT OR REPLACE INTO weekly_close
+    INSERT INTO weekly_close
     (week, profit)
     VALUES (?,?)
     """, (week_start, profit))
@@ -155,17 +167,28 @@ def weekly_settlement():
     conn.commit()
     conn.close()
 
-# ================= AUTO CHECK =================
-def auto_close_check():
-    now = datetime.now(pytz.timezone("Asia/Kuala_LUMPUR"))
-    t = now.strftime("%H:%M")
+# ================= AUTO CLOSE SAFE =================
+_last_run = None
 
-    # ⚠️ 简化版本：只允许触发一次逻辑（避免重复）
+def auto_close_check():
+    global _last_run
+
+    tz = pytz.timezone("Asia/Kuala_LUMPUR")
+    now = datetime.now(tz)
+    t = now.strftime("%H:%M")
+    today_key = now.strftime("%Y-%m-%d")
+
+    # 防止重复执行
+    if _last_run == today_key:
+        return
+
     if t == "23:59":
         daily_settlement()
 
         if now.weekday() == 6:
             weekly_settlement()
+
+        _last_run = today_key
 
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
@@ -247,6 +270,7 @@ def delete(id):
         amount, payment = row
         update_value("credit", amount)
         update_value(payment.lower(), -amount)
+
         c.execute("DELETE FROM records WHERE id=?", (id,))
 
     conn.commit()
@@ -254,7 +278,7 @@ def delete(id):
 
     return redirect("/home")
 
-# ================= MANUAL SET BALANCE =================
+# ================= MANUAL BALANCE =================
 @app.route("/set_balance", methods=["POST"])
 def set_balance():
     if not session.get("login"):
@@ -279,9 +303,7 @@ def weekly():
 
     conn.close()
 
-    profit = result if result else 0
-
-    return render_template("weekly.html", profit=profit)
+    return render_template("weekly.html", profit=result if result else 0)
 
 # ================= RUN =================
 if __name__ == "__main__":
