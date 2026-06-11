@@ -93,11 +93,33 @@ def home():
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT * FROM records ORDER BY id DESC")
+
+    # 最近记录
+    c.execute("SELECT * FROM records ORDER BY id DESC LIMIT 20")
     data = c.fetchall()
+
+    # 读取余额
+    def get(k):
+        c.execute("SELECT value FROM settings WHERE key=?", (k,))
+        return c.fetchone()[0]
+
+    credit = get("credit")
+    tng = get("tng")
+    cash = get("cash")
+    bank = get("bank")
+    a = get("a")
+
     conn.close()
 
-    return render_template("index.html", data=data, credit=get_value("credit"))
+    return render_template(
+        "index.html",
+        data=data,
+        credit=credit,
+        tng=tng,
+        cash=cash,
+        bank=bank,
+        a=a
+    )
 
 
 # ================= ADD RECORD =================
