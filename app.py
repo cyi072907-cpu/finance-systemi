@@ -164,3 +164,66 @@ def delete(id):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+    def get_range_data(start_time):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT account, amount, payment, time
+        FROM records
+        WHERE time >= ?
+        ORDER BY id DESC
+    """, (start_time,))
+
+    data = c.fetchall()
+    conn.close()
+    return data
+    @app.route("/report/daily")
+def daily_report():
+    if not session.get("login"):
+        return redirect("/")
+
+    today = now_time()[:10] + " 00:00:00"
+    data = get_range_data(today)
+
+    return render_template("reports.html", data=data, title="Daily Report")
+    @app.route("/report/weekly")
+def weekly_report():
+    if not session.get("login"):
+        return redirect("/")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT account, amount, payment, time
+        FROM records
+        ORDER BY id DESC
+    """)
+
+    data = c.fetchall()
+    conn.close()
+
+    return render_template("reports.html", data=data, title="Weekly Report")
+    @app.route("/report/monthly")
+def monthly_report():
+    if not session.get("login"):
+        return redirect("/")
+
+    month = now_time()[:7]
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT account, amount, payment, time
+        FROM records
+        WHERE time LIKE ?
+        ORDER BY id DESC
+    """, (month + "%",))
+
+    data = c.fetchall()
+    conn.close()
+
+    return render_template("reports.html", data=data, title="Monthly Report")
+    
