@@ -3,150 +3,214 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Boss System</title>
+<title>Boss Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
+    margin: 0;
     font-family: Arial;
-    padding: 10px;
-    background: #f5f5f5;
+    background: #0f172a;
+    color: white;
 }
 
+/* 顶部 */
+.header {
+    padding: 15px;
+    background: #111827;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* 卡片区 */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 10px;
+}
+
+.card {
+    background: #1f2937;
+    padding: 15px;
+    border-radius: 12px;
+}
+
+/* 按钮 */
+button {
+    background: #22c55e;
+    border: none;
+    padding: 10px;
+    color: white;
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+/* 表格 */
 table {
     width: 100%;
-    background: white;
     border-collapse: collapse;
+    background: #111827;
+    margin-top: 10px;
 }
 
 th {
-    background: black;
-    color: white;
+    background: #1f2937;
     padding: 8px;
 }
 
 td {
     padding: 8px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #222;
 }
 
-button {
+/* 输入框 */
+input, select {
+    width: 100%;
     padding: 8px;
-    background: black;
-    color: white;
+    margin: 5px 0;
+    border-radius: 6px;
     border: none;
-    margin-top: 10px;
+}
+
+a {
+    color: #38bdf8;
+    margin-right: 10px;
+    text-decoration: none;
 }
 </style>
-
 </head>
 
 <body>
 
-<h2>💰 Credit：{{credit}}</h2>
-
-<h3>📊 今日盈亏：{{profit}}</h3>
-
-<hr>
-
-<div>
-    <p>TNG: {{tng}}</p>
-    <p>CASH: {{cash}}</p>
-    <p>BANK: {{bank}}</p>
-    <p>A: {{a}}</p>
+<div class="header">
+💰 Boss Dashboard
 </div>
 
-<hr>
+<!-- 卡片 -->
+<div class="grid">
 
-<h3>📊 资金分布</h3>
+<div class="card">
+<h3>Credit</h3>
+<h2>{{credit}}</h2>
+</div>
+
+<div class="card">
+<h3>今日盈亏</h3>
+<h2>{{profit}}</h2>
+</div>
+
+<div class="card">
+<h3>TNG</h3>
+<h2>{{tng}}</h2>
+</div>
+
+<div class="card">
+<h3>CASH</h3>
+<h2>{{cash}}</h2>
+</div>
+
+<div class="card">
+<h3>BANK</h3>
+<h2>{{bank}}</h2>
+</div>
+
+<div class="card">
+<h3>A</h3>
+<h2>{{a}}</h2>
+</div>
+
+</div>
+
+<!-- 图表 -->
+<div style="padding:10px;">
 <canvas id="myChart"></canvas>
+</div>
 
 <script>
-const ctx = document.getElementById('myChart');
-
-new Chart(ctx, {
+new Chart(document.getElementById("myChart"), {
     type: 'bar',
     data: {
-        labels: ['TNG', 'CASH', 'BANK', 'A'],
+        labels: ['TNG','CASH','BANK','A'],
         datasets: [{
-            label: '余额',
-            data: [{{tng}}, {{cash}}, {{bank}}, {{a}}],
-            borderWidth: 1
+            label: 'Balance',
+            data: [{{tng}},{{cash}},{{bank}},{{a}}],
+            backgroundColor: ['#22c55e','#f97316','#3b82f6','#a855f7']
         }]
     }
 });
 </script>
 
+<!-- 导航 -->
+<div style="padding:10px;">
+<a href="/home">Home</a>
+<a href="/history">History</a>
+<a href="/report/daily">Daily</a>
+<a href="/report/weekly">Weekly</a>
+<a href="/report/monthly">Monthly</a>
+</div>
+
 <hr>
 
-<a href="/home">首页</a> |
-<a href="/history">历史</a> |
-<a href="/report/daily">日报</a> |
-<a href="/report/weekly">周报</a> |
-<a href="/report/monthly">月报</a>
+<!-- 添加记录 -->
+<div style="padding:10px;">
+<h3>➕ Add Record</h3>
 
-<hr>
+<button onclick="toggleForm()">Open Form</button>
 
-<button onclick="toggleForm()">➕ 新增记录</button>
-
-<div id="formBox" style="display:none; margin-top:10px;">
+<div id="formBox" style="display:none;">
 <form action="/add" method="POST">
 
-<input name="account" placeholder="账号"><br><br>
-<input name="amount" type="number" step="0.01" placeholder="金额"><br><br>
+<input name="account" placeholder="Account">
+<input name="amount" type="number" step="0.01" placeholder="Amount">
 
 <select name="payment">
 <option>TNG</option>
 <option>Cash</option>
 <option>Bank</option>
 <option>A</option>
-</select><br><br>
+</select>
 
-<input name="remark" placeholder="备注"><br><br>
+<input name="remark" placeholder="Remark">
 
-<button type="submit">提交</button>
+<button type="submit">Submit</button>
 
 </form>
 </div>
+</div>
 
-<hr>
-
-<h3>📌 最近记录</h3>
+<!-- 最近记录 -->
+<div style="padding:10px;">
+<h3>📌 Recent Records</h3>
 
 <table>
 <tr>
-    <th>账号</th>
-    <th>金额</th>
-    <th>付款方式</th>
-    <th>时间</th>
-    <th>操作</th>
+<th>Account</th>
+<th>Amount</th>
+<th>Payment</th>
+<th>Time</th>
+<th>Action</th>
 </tr>
 
 {% for r in data %}
 <tr>
-    <td>{{r[1]}}</td>
-    <td>{{r[2]}}</td>
-    <td>{{r[3]}}</td>
-    <td>{{r[5]}}</td>
-    <td>
-        <a href="/delete/{{r[0]}}"
-           onclick="return confirm('⚠️ 删除后无法恢复，确定吗？')">
-           删除
-        </a>
-    </td>
+<td>{{r[1]}}</td>
+<td>{{r[2]}}</td>
+<td>{{r[3]}}</td>
+<td>{{r[5]}}</td>
+<td>
+<a href="/delete/{{r[0]}}" onclick="return confirm('Delete?')">Del</a>
+</td>
 </tr>
 {% endfor %}
 </table>
+</div>
 
 <script>
 function toggleForm(){
     let box = document.getElementById("formBox");
-    box.style.display = (box.style.display === "none") ? "block" : "none";
-}
-
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/static/service-worker.js");
+    box.style.display = box.style.display === "none" ? "block" : "none";
 }
 </script>
 
