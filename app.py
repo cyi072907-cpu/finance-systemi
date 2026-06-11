@@ -348,3 +348,4 @@ def profit_today():
     profit = calc_profit(today)
 
     return render_template("profit.html", title="Today Profit", profit=profit)
+    
