@@ -4,11 +4,51 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Boss System</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    padding: 10px;
+    background: #f5f5f5;
+}
+
+table {
+    width: 100%;
+    background: white;
+    border-collapse: collapse;
+}
+
+th {
+    background: black;
+    color: white;
+    padding: 8px;
+}
+
+td {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+}
+
+button {
+    padding: 8px;
+    background: black;
+    color: white;
+    border: none;
+    margin-top: 10px;
+}
+</style>
+
 </head>
 
-<body style="font-family:Arial;padding:10px">
+<body>
 
 <h2>💰 Credit：{{credit}}</h2>
+
+<h3>📊 今日盈亏：{{profit}}</h3>
+
+<hr>
 
 <div>
     <p>TNG: {{tng}}</p>
@@ -19,69 +59,6 @@
 
 <hr>
 
-<a href="/home">首页</a>
-<a href="/history">历史查询</a>
-<a href="/report/daily">日报</a>
-<a href="/report/weekly">周报</a>
-<a href="/report/monthly">月报</a>
-
-<hr>
-
-<form action="/add" method="POST">
-<input name="account" placeholder="账号"><br><br>
-
-<input name="amount" type="number" step="0.01" placeholder="+100 / -100"><br><br>
-
-<select name="payment">
-<option>TNG</option>
-<option>Cash</option>
-<option>Bank</option>
-<option>A</option>
-</select><br><br>
-
-<input name="remark" placeholder="备注"><br><br>
-
-<button type="submit">提交</button>
-</form>
-
-<hr>
-
-<h3>最近记录</h3>
-
-<table border="1" width="100%">
-<tr>
-    <th>账号</th>
-    <th>金额</th>
-    <th>付款方式</th>
-    <th>时间</th>
-    <th>操作</th>
-</tr>
-
-{% for r in data %}
-<tr>
-    <td>{{r[1]}}</td>
-    <td>{{r[2]}}</td>
-    <td>{{r[3]}}</td>
-    <td>{{r[5]}}</td>
-    <td>
-        <a href="/delete/{{r[0]}}" onclick="return confirm('确定删除这条记录吗？')">
-            删除
-        </a>
-    </td>
-</tr>
-{% endfor %}
-</table>
-
-<script>
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/static/service-worker.js");
-}
-</script>
-
-</body>
-</html>
-<h3>📊 今日盈亏：{{profit}}</h3>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <h3>📊 资金分布</h3>
 <canvas id="myChart"></canvas>
 
@@ -100,30 +77,78 @@ new Chart(ctx, {
     }
 });
 </script>
-<button onclick="openForm()">➕ 新增记录</button>
 
-<div id="formBox" style="display:none;">
+<hr>
+
+<a href="/home">首页</a> |
+<a href="/history">历史</a> |
+<a href="/report/daily">日报</a> |
+<a href="/report/weekly">周报</a> |
+<a href="/report/monthly">月报</a>
+
+<hr>
+
+<button onclick="toggleForm()">➕ 新增记录</button>
+
+<div id="formBox" style="display:none; margin-top:10px;">
 <form action="/add" method="POST">
 
-<input name="account" placeholder="账号"><br>
-<input name="amount" placeholder="金额"><br>
+<input name="account" placeholder="账号"><br><br>
+<input name="amount" type="number" step="0.01" placeholder="金额"><br><br>
 
 <select name="payment">
 <option>TNG</option>
 <option>Cash</option>
 <option>Bank</option>
 <option>A</option>
-</select><br>
+</select><br><br>
 
-<input name="remark" placeholder="备注"><br>
+<input name="remark" placeholder="备注"><br><br>
 
 <button type="submit">提交</button>
+
 </form>
 </div>
 
+<hr>
+
+<h3>📌 最近记录</h3>
+
+<table>
+<tr>
+    <th>账号</th>
+    <th>金额</th>
+    <th>付款方式</th>
+    <th>时间</th>
+    <th>操作</th>
+</tr>
+
+{% for r in data %}
+<tr>
+    <td>{{r[1]}}</td>
+    <td>{{r[2]}}</td>
+    <td>{{r[3]}}</td>
+    <td>{{r[5]}}</td>
+    <td>
+        <a href="/delete/{{r[0]}}"
+           onclick="return confirm('⚠️ 删除后无法恢复，确定吗？')">
+           删除
+        </a>
+    </td>
+</tr>
+{% endfor %}
+</table>
+
 <script>
-function openForm(){
+function toggleForm(){
     let box = document.getElementById("formBox");
-    box.style.display = box.style.display === "none" ? "block" : "none";
+    box.style.display = (box.style.display === "none") ? "block" : "none";
+}
+
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/static/service-worker.js");
 }
 </script>
+
+</body>
+</html>
