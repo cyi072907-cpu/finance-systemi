@@ -13,7 +13,6 @@ def now_time():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-
 # ================= DB INIT =================
 def init_db():
     conn = sqlite3.connect(DB)
@@ -53,8 +52,7 @@ def init_db():
 
 init_db()
 
-
-# ================= GET VALUE =================
+# ================= DB HELPERS =================
 def get_value(key):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -64,7 +62,6 @@ def get_value(key):
     return v
 
 
-# ================= UPDATE VALUE =================
 def update_value(key, amount):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -72,6 +69,25 @@ def update_value(key, amount):
     conn.commit()
     conn.close()
 
+# ================= PROFIT =================
+def calc_profit(start_time):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("SELECT amount FROM records WHERE time >= ?", (start_time,))
+    rows = c.fetchall()
+    conn.close()
+
+    total = 0
+    for r in rows:
+        total += (-r[0])
+
+    return total
+
+
+def calc_profit_today():
+    today = now_time()[:10] + " 00:00:00"
+    return calc_profit(today)
 
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
@@ -84,7 +100,6 @@ def login():
 
     return render_template("login.html")
 
-
 # ================= HOME =================
 @app.route("/home")
 def home():
@@ -94,11 +109,9 @@ def home():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    # 最近记录
     c.execute("SELECT * FROM records ORDER BY id DESC LIMIT 20")
     data = c.fetchall()
 
-    # 读取余额
     def get(k):
         c.execute("SELECT value FROM settings WHERE key=?", (k,))
         return c.fetchone()[0]
@@ -118,11 +131,11 @@ def home():
         tng=tng,
         cash=cash,
         bank=bank,
-        a=a
+        a=a,
+        profit=calc_profit_today()
     )
 
-
-# ================= ADD RECORD =================
+# ================= ADD =================
 @app.route("/add", methods=["POST"])
 def add():
     if not session.get("login"):
@@ -133,14 +146,7 @@ def add():
     payment = request.form["payment"]
     remark = request.form["remark"]
 
-    # ================= LOGIC =================
-    # A模式：
-    # +100 -> credit -100
-    # -100 -> credit +100
-
-    credit_change = -amount
-
-    update_value("credit", credit_change)
+    update_value("credit", -amount)
     update_value(payment.lower(), amount)
 
     conn = sqlite3.connect(DB)
@@ -155,7 +161,6 @@ def add():
     conn.close()
 
     return redirect("/home")
-
 
 # ================= DELETE =================
 @app.route("/delete/<int:id>")
@@ -172,7 +177,6 @@ def delete(id):
     if row:
         amount, payment = row
 
-        # rollback
         update_value("credit", amount)
         update_value(payment.lower(), -amount)
 
@@ -183,10 +187,8 @@ def delete(id):
 
     return redirect("/home")
 
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-    def get_range_data(start_time):
+# ================= REPORT HELP =================
+def get_range_data(start_time):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
@@ -200,7 +202,9 @@ if __name__ == "__main__":
     data = c.fetchall()
     conn.close()
     return data
-    @app.route("/report/daily")
+
+# ================= REPORT =================
+@app.route("/report/daily")
 def daily_report():
     if not session.get("login"):
         return redirect("/")
@@ -209,25 +213,23 @@ def daily_report():
     data = get_range_data(today)
 
     return render_template("reports.html", data=data, title="Daily Report")
-    @app.route("/report/weekly")
+
+
+@app.route("/report/weekly")
 def weekly_report():
     if not session.get("login"):
         return redirect("/")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
-    c.execute("""
-        SELECT account, amount, payment, time
-        FROM records
-        ORDER BY id DESC
-    """)
-
+    c.execute("SELECT account, amount, payment, time FROM records ORDER BY id DESC")
     data = c.fetchall()
     conn.close()
 
     return render_template("reports.html", data=data, title="Weekly Report")
-    @app.route("/report/monthly")
+
+
+@app.route("/report/monthly")
 def monthly_report():
     if not session.get("login"):
         return redirect("/")
@@ -236,26 +238,22 @@ def monthly_report():
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("""
         SELECT account, amount, payment, time
         FROM records
         WHERE time LIKE ?
         ORDER BY id DESC
     """, (month + "%",))
-
     data = c.fetchall()
     conn.close()
 
     return render_template("reports.html", data=data, title="Monthly Report")
-    
-    @app.route("/history", methods=["GET", "POST"])
+
+# ================= HISTORY =================
+@app.route("/history", methods=["GET", "POST"])
 def history():
     if not session.get("login"):
         return redirect("/")
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
 
     data = []
 
@@ -264,6 +262,9 @@ def history():
         payment = request.form.get("payment")
         start = request.form.get("start")
         end = request.form.get("end")
+
+        conn = sqlite3.connect(DB)
+        c = conn.cursor()
 
         query = "SELECT account, amount, payment, time FROM records WHERE 1=1"
         params = []
@@ -289,78 +290,10 @@ def history():
         c.execute(query, params)
         data = c.fetchall()
 
-    conn.close()
+        conn.close()
 
     return render_template("history.html", data=data)
-    @app.route("/delete/<int:id>")
-def delete(id):
-    if not session.get("login"):
-        return redirect("/")
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("SELECT amount, payment FROM records WHERE id=?", (id,))
-    row = c.fetchone()
-
-    if row:
-        amount, payment = row
-
-        # rollback
-        update_value("credit", amount)
-        update_value(payment.lower(), -amount)
-
-        c.execute("DELETE FROM records WHERE id=?", (id,))
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/home")
-    def calc_profit(start_time):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT amount FROM records
-        WHERE time >= ?
-    """, (start_time,))
-
-    rows = c.fetchall()
-    conn.close()
-
-    total = 0
-
-    for r in rows:
-        amt = r[0]
-
-        # 你的规则：
-        # +100 = 你亏
-        # -100 = 你赚
-        total += (-amt)
-
-    return total
-    @app.route("/profit/today")
-def profit_today():
-    if not session.get("login"):
-        return redirect("/")
-
-    today = now_time()[:10] + " 00:00:00"
-    profit = calc_profit(today)
-
-    return render_template("profit.html", title="Today Profit", profit=profit)
-    
-    def calc_profit_today():
-    today = now_time()[:10] + " 00:00:00"
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("SELECT amount FROM records WHERE time >= ?", (today,))
-    rows = c.fetchall()
-    conn.close()
-
-    profit = 0
-    for r in rows:
-        profit += (-r[0])
-
-    return profit
+# ================= RUN =================
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
