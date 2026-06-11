@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 app = Flask(__name__)
@@ -8,15 +8,18 @@ app.secret_key = "Aaa8888"
 
 DB = "data.db"
 
+
 # ================= TIME =================
 def now_time():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-def today_date():
-    return now_time()[:10]
 
-# ================= INIT =================
+def today_start():
+    return now_time()[:10] + " 00:00:00"
+
+
+# ================= DB INIT =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -48,19 +51,17 @@ def init_db():
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS daily_summary (
+    CREATE TABLE IF NOT EXISTS daily_close (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT UNIQUE,
+        date TEXT,
         open_credit REAL,
         close_credit REAL,
-        profit REAL,
-        time TEXT
+        profit REAL
     )
     """)
 
     default = [
         ("credit", 5000),
-        ("open_credit", 5000),
         ("tng", 0),
         ("cash", 0),
         ("bank", 0),
@@ -73,7 +74,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 init_db()
+
 
 # ================= HELPERS =================
 def get_value(key):
@@ -84,12 +87,14 @@ def get_value(key):
     conn.close()
     return v
 
+
 def update_value(key, amount):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("UPDATE settings SET value = value + ? WHERE key=?", (amount, key))
     conn.commit()
     conn.close()
+
 
 def log(action):
     conn = sqlite3.connect(DB)
@@ -98,63 +103,53 @@ def log(action):
     conn.commit()
     conn.close()
 
-# ================= DAILY SYSTEM =================
-def ensure_open():
+
+# ================= PROFIT (正确逻辑) =================
+# +amount = 客人赢 = 你亏
+# -amount = 客人输 = 你赚
+def calc_profit(start_time):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
-    c.execute("SELECT * FROM daily_summary WHERE date=?", (today_date(),))
-    row = c.fetchone()
-
-    if not row:
-        credit = get_value("credit")
-
-        c.execute("""
-            INSERT INTO daily_summary (date, open_credit, close_credit, profit, time)
-            VALUES (?,?,?,?,?)
-        """, (today_date(), credit, credit, 0, now_time()))
-
-        conn.commit()
-
+    c.execute("SELECT amount FROM records WHERE time >= ?", (start_time,))
+    rows = c.fetchall()
     conn.close()
 
-def update_close():
+    return sum(-r[0] for r in rows)
+
+
+# ================= 日结 =================
+def daily_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    open_credit = get_value("open_credit")
-    close_credit = get_value("credit")
-    profit = open_credit - close_credit
+    today = now_time()[:10]
+
+    c.execute("SELECT value FROM settings WHERE key='credit'")
+    open_credit = c.fetchone()[0]
+
+    profit = calc_profit(today_start())
+    close_credit = open_credit
 
     c.execute("""
-        UPDATE daily_summary
-        SET close_credit=?, profit=?, time=?
-        WHERE date=?
-    """, (close_credit, profit, now_time(), today_date()))
+        INSERT OR IGNORE INTO daily_close (date, open_credit, close_credit, profit)
+        VALUES (?,?,?,?)
+    """, (today, open_credit, close_credit, profit))
 
     conn.commit()
     conn.close()
 
-def get_today_profit():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("SELECT profit FROM daily_summary WHERE date=?", (today_date(),))
-    row = c.fetchone()
-
-    conn.close()
-    return row[0] if row else 0
 
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form["username"] and request.form["password"] == "Aaa8888":
+        if request.form["username"] == "admin" and request.form["password"] == "Aaa8888":
             session["login"] = True
             return redirect("/home")
-        return "密码错误"
+        return "Login Failed"
 
     return render_template("login.html")
+
 
 # ================= HOME =================
 @app.route("/home")
@@ -162,17 +157,13 @@ def home():
     if not session.get("login"):
         return redirect("/")
 
-    ensure_open()
-    update_close()
-
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute("SELECT * FROM records ORDER BY id DESC LIMIT 20")
     data = c.fetchall()
-    conn.close()
 
-    profit = get_today_profit()
+    conn.close()
 
     return render_template(
         "index.html",
@@ -182,8 +173,9 @@ def home():
         cash=get_value("cash"),
         bank=get_value("bank"),
         a=get_value("a"),
-        profit=profit
+        profit=calc_profit(today_start())
     )
+
 
 # ================= ADD =================
 @app.route("/add", methods=["POST"])
@@ -196,6 +188,7 @@ def add():
     payment = request.form["payment"]
     remark = request.form["remark"]
 
+    # ✔ 正确逻辑
     update_value("credit", -amount)
     update_value(payment.lower(), amount)
 
@@ -213,6 +206,7 @@ def add():
     conn.close()
 
     return redirect("/home")
+
 
 # ================= DELETE =================
 @app.route("/delete/<int:id>")
@@ -241,21 +235,21 @@ def delete(id):
 
     return redirect("/home")
 
+
 # ================= REPORT =================
-@app.route("/history")
-def history():
+@app.route("/report/daily")
+def report_daily():
     if not session.get("login"):
         return redirect("/")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
-    c.execute("SELECT account, amount, payment, time FROM records ORDER BY id DESC")
+    c.execute("SELECT * FROM records WHERE time >= ?", (today_start(),))
     data = c.fetchall()
-
     conn.close()
 
-    return render_template("history.html", data=data)
+    return render_template("reports.html", data=data, title="Daily Report")
+
 
 # ================= RUN =================
 if __name__ == "__main__":
