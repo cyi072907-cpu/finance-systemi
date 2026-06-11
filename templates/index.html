@@ -3,57 +3,46 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>资金系统</title>
-
-<style>
-body{font-family:Arial;background:#f5f5f5;padding:10px}
-.card{background:white;padding:12px;margin-bottom:10px;border-radius:10px}
-input,select,button{width:100%;padding:10px;margin-top:8px}
-table{width:100%;background:white;border-collapse:collapse;font-size:12px}
-td,th{border:1px solid #ddd;padding:5px;text-align:center}
-</style>
+<title>系统</title>
 </head>
 
-<body>
+<body style="font-family:Arial;padding:10px">
 
-<div class="card">
-<h2>💰 资金系统</h2>
-<p>当前余额：<b>{{balance}}</b></p>
+<h2>💰 Credit：{{credit}}</h2>
+
+<div>
+<a href="/reports">📊 报表</a> |
+<a href="/search">🔍 查询</a> |
 <a href="/logout">退出</a>
 </div>
 
-<div class="card">
-<h3>📊 盈亏统计</h3>
-<p>起始：{{start}}</p>
-<p>当前：{{balance}}</p>
-<p>盈利/亏损：{{profit}}</p>
-</div>
+<hr>
 
-<div class="card">
 <form action="/add" method="POST">
-<input name="amount" placeholder="+100 / -100" required>
+<input name="account" placeholder="账号"><br><br>
+<input name="amount" placeholder="+100 / -100"><br><br>
 
 <select name="payment">
 <option>TNG</option>
 <option>Cash</option>
 <option>Bank</option>
-<option>人名</option>
-</select>
+<option>Name</option>
+</select><br><br>
 
-<input name="remark" placeholder="备注">
+<input name="remark" placeholder="备注"><br><br>
 
 <button type="submit">提交</button>
 </form>
-</div>
 
-<div class="card">
-<table>
+<hr>
+
+<table border="1" width="100%">
 <tr>
 <th>时间</th>
+<th>账号</th>
 <th>金额</th>
 <th>付款</th>
 <th>备注</th>
-<th>余额</th>
 </tr>
 
 {% for r in data %}
@@ -65,13 +54,7 @@ td,th{border:1px solid #ddd;padding:5px;text-align:center}
 <td>{{r[5]}}</td>
 </tr>
 {% endfor %}
-
 </table>
-</div>
 
 </body>
 </html>
-<div class="card">
-<a href="/reports">📊 报表中心</a><br><br>
-<a href="/search">🔍 日期查询</a>
-</div>
