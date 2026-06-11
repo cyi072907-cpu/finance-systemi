@@ -2,23 +2,57 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>后台系统</title>
+<title>资金记录系统</title>
 </head>
 <body>
 
-<h2>资金记录后台系统</h2>
+<h2>💰 资金记录系统</h2>
 
 <form action="/add" method="POST">
-<input name="account" placeholder="账号">
+<input name="account" placeholder="账号" required>
+
 <select name="type">
 <option>入账</option>
 <option>出账</option>
 </select>
-<input name="amount" placeholder="金额">
-<input name="before" placeholder="前余额">
+
+<input name="amount" type="number" placeholder="金额" required>
+<input name="before" type="number" placeholder="操作前余额" required>
 <input name="remark" placeholder="备注">
-<button type="submit">提交</button>
+
+<button type="submit">添加记录</button>
 </form>
+
+<hr>
+
+<h3>记录列表</h3>
+
+<table border="1" cellpadding="5">
+<tr>
+<th>时间</th>
+<th>账号</th>
+<th>类型</th>
+<th>金额</th>
+<th>前余额</th>
+<th>后余额</th>
+<th>备注</th>
+<th>操作</th>
+</tr>
+
+{% for r in data %}
+<tr>
+<td>{{r[1]}}</td>
+<td>{{r[2]}}</td>
+<td>{{r[3]}}</td>
+<td>{{r[4]}}</td>
+<td>{{r[5]}}</td>
+<td>{{r[6]}}</td>
+<td>{{r[7]}}</td>
+<td><a href="/delete/{{r[0]}}">删除</a></td>
+</tr>
+{% endfor %}
+
+</table>
 
 </body>
 </html>
