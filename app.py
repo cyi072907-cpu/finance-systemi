@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 app = Flask(__name__)
@@ -91,7 +91,7 @@ def update_value(key, amount):
     conn.close()
 
 
-# ================= PROFIT =================
+# ================= PROFIT (核心修正) =================
 def calc_profit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -99,15 +99,17 @@ def calc_profit():
     rows = c.fetchall()
     conn.close()
 
+    # +amount = 客人赢 = 你亏
     return sum(-r[0] for r in rows)
 
 
-# ================= DAILY CLOSE (手动/未来自动用) =================
+# ================= DAILY SETTLEMENT =================
 def daily_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     date = today()
+
     start = get_value("credit")
     end = get_value("credit")
     profit = calc_profit()
@@ -130,7 +132,6 @@ def login():
             session["login"] = True
             return redirect("/home")
         return "Login Failed"
-
     return render_template("login.html")
 
 
