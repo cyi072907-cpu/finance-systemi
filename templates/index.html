@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>后台系统</title>
+</head>
+<body>
+
+<h2>资金记录后台系统</h2>
+
+<form action="/add" method="POST">
+<input name="account" placeholder="账号">
+<select name="type">
+<option>入账</option>
+<option>出账</option>
+</select>
+<input name="amount" placeholder="金额">
+<input name="before" placeholder="前余额">
+<input name="remark" placeholder="备注">
+<button type="submit">提交</button>
+</form>
+
+</body>
+</html>
