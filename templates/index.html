@@ -100,3 +100,30 @@ new Chart(ctx, {
     }
 });
 </script>
+<button onclick="openForm()">➕ 新增记录</button>
+
+<div id="formBox" style="display:none;">
+<form action="/add" method="POST">
+
+<input name="account" placeholder="账号"><br>
+<input name="amount" placeholder="金额"><br>
+
+<select name="payment">
+<option>TNG</option>
+<option>Cash</option>
+<option>Bank</option>
+<option>A</option>
+</select><br>
+
+<input name="remark" placeholder="备注"><br>
+
+<button type="submit">提交</button>
+</form>
+</div>
+
+<script>
+function openForm(){
+    let box = document.getElementById("formBox");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+}
+</script>
