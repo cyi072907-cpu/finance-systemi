@@ -82,3 +82,21 @@ if ("serviceWorker" in navigator) {
 </html>
 <h3>📊 今日盈亏：{{profit}}</h3>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<h3>📊 资金分布</h3>
+<canvas id="myChart"></canvas>
+
+<script>
+const ctx = document.getElementById('myChart');
+
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['TNG', 'CASH', 'BANK', 'A'],
+        datasets: [{
+            label: '余额',
+            data: [{{tng}}, {{cash}}, {{bank}}, {{a}}],
+            borderWidth: 1
+        }]
+    }
+});
+</script>
