@@ -1,6 +1,15 @@
 {
-  "name": "Boss Ledger",
-  "short_name": "Ledger",
+  "name": "Boss Finance System",
+  "short_name": "BossSystem",
   "start_url": "/home",
-  "display": "standalone"
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/static/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
