@@ -1,50 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>System</title>
+<title>资金管理系统</title>
+
 <style>
-body{font-family:Arial;background:#f5f5f5;padding:10px}
-.card{background:white;padding:10px;margin:10px;border-radius:10px}
-input,select,button{width:100%;padding:10px;margin-top:5px}
-table{width:100%;background:white;margin-top:10px;border-collapse:collapse}
-td,th{border:1px solid #ddd;padding:5px;font-size:12px}
+body{
+    font-family: Arial;
+    background:#f4f6f8;
+    margin:0;
+    padding:10px;
+}
+
+.card{
+    background:white;
+    padding:12px;
+    margin-bottom:10px;
+    border-radius:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+h2,h3{margin:5px 0}
+
+input,select,button{
+    width:100%;
+    padding:10px;
+    margin-top:8px;
+    border-radius:8px;
+    border:1px solid #ddd;
+    font-size:14px;
+}
+
+button{
+    background:#2d89ef;
+    color:white;
+    border:none;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    font-size:12px;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:6px;
+    text-align:center;
+}
+
+.balance{
+    font-size:20px;
+    font-weight:bold;
+    color:#2d89ef;
+}
+
+a{
+    color:red;
+    text-decoration:none;
+}
 </style>
 </head>
 
 <body>
 
 <div class="card">
-<h3>💰 Balance: {{balance}}</h3>
-<a href="/logout">Logout</a>
+<h2>💰 资金管理系统</h2>
+<h3>当前余额：<span class="balance">{{balance}}</span></h3>
+<a href="/logout">退出登录</a>
 </div>
 
 <div class="card">
+<h3>新增记录</h3>
+
 <form action="/add" method="POST">
-<input name="amount" placeholder="+100 / -100" required>
+
+<input name="amount" type="number" placeholder="输入金额（+100 / -100）" required>
 
 <select name="payment">
 <option>TNG</option>
 <option>Cash</option>
 <option>Bank</option>
-<option>Name</option>
+<option>人名</option>
 </select>
 
-<input name="remark" placeholder="Remark">
+<input name="remark" placeholder="备注（可选）">
 
-<button type="submit">Submit</button>
+<button type="submit">提交记录</button>
+
 </form>
 </div>
 
 <div class="card">
+<h3>📊 记录列表</h3>
+
 <table>
 <tr>
-<th>Time</th>
-<th>Amount</th>
-<th>Payment</th>
-<th>Remark</th>
-<th>Balance</th>
+<th>时间</th>
+<th>金额</th>
+<th>付款方式</th>
+<th>备注</th>
+<th>余额</th>
 </tr>
 
 {% for r in data %}
