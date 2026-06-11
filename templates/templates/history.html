@@ -1,0 +1,29 @@
+<h2>历史查询</h2>
+
+<form method="POST">
+    <input name="account" placeholder="账号">
+    <input name="payment" placeholder="付款方式 (TNG/CASH/BANK/A)">
+    <input name="start" placeholder="开始时间 (2026-06-01 00:00:00)">
+    <input name="end" placeholder="结束时间">
+    <button type="submit">查询</button>
+</form>
+
+<br>
+
+<table border="1" width="100%">
+<tr>
+    <th>账号</th>
+    <th>金额</th>
+    <th>付款方式</th>
+    <th>时间</th>
+</tr>
+
+{% for r in data %}
+<tr>
+    <td>{{r[0]}}</td>
+    <td>{{r[1]}}</td>
+    <td>{{r[2]}}</td>
+    <td>{{r[3]}}</td>
+</tr>
+{% endfor %}
+</table>
