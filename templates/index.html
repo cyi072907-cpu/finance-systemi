@@ -68,3 +68,41 @@
 <a href="/report/daily">日报</a>
 <a href="/report/weekly">周报</a>
 <a href="/report/monthly">月报</a>
+<h2>💰 Boss Dashboard</h2>
+
+<div>
+    <p>Credit: {{credit}}</p>
+    <p>TNG: {{tng}}</p>
+    <p>CASH: {{cash}}</p>
+    <p>BANK: {{bank}}</p>
+    <p>A: {{a}}</p>
+</div>
+
+<hr>
+
+<a href="/history">历史查询</a>
+<a href="/report/daily">日报</a>
+<a href="/report/weekly">周报</a>
+<a href="/report/monthly">月报</a>
+
+<hr>
+
+<h3>最近记录</h3>
+
+<table>
+<tr>
+    <th>账号</th>
+    <th>金额</th>
+    <th>付款方式</th>
+    <th>时间</th>
+</tr>
+
+{% for r in data %}
+<tr>
+    <td>{{r[1]}}</td>
+    <td>{{r[2]}}</td>
+    <td>{{r[3]}}</td>
+    <td>{{r[5]}}</td>
+</tr>
+{% endfor %}
+</table>
