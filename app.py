@@ -10,7 +10,7 @@ app.secret_key = "CHANGE_ME_123"
 DB = "data.db"
 
 # ================= BOT TOKEN（Render安全版）=================
-BOT_TOKEN = os.environ.get(8660820217:AAFCfgnb-J6c7AdB6j2OABIkHNtqE4flHxo）
+BOT_TOKEN = os.environ.get("8660820217:AAFCfgnb_J6c7AbB6j2OABlkHNtqE4flHxo")
 
 # ================= TIME =================
 def now_time():
