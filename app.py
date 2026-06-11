@@ -1,16 +1,14 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
 from datetime import datetime
-import pytz
 
 app = Flask(__name__)
-app.secret_key = "secret_key_123"
+app.secret_key = "Aaa8888"
 
 DB = "data.db"
 
 def get_time():
-    tz = pytz.timezone("Asia/Kuala_Lumpur")
-    return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def init_db():
     conn = sqlite3.connect(DB)
@@ -61,11 +59,11 @@ def login():
         if request.form["password"] == "Aaa8888":
             session["login"] = True
             return redirect("/home")
-        return "Wrong password"
+        return "密码错误"
     return '''
     <form method="POST">
-        <input name="password" type="password" placeholder="Password">
-        <button type="submit">Login</button>
+        <input name="password" type="password" placeholder="输入密码">
+        <button type="submit">登录</button>
     </form>
     '''
 
@@ -80,7 +78,17 @@ def home():
     data = c.fetchall()
     conn.close()
 
-    return render_template("index.html", data=data, balance=get_balance())
+    start = get_balance()
+    current = get_balance()
+    profit = current - start
+
+    return render_template(
+        "index.html",
+        data=data,
+        balance=current,
+        start=start,
+        profit=profit
+    )
 
 @app.route("/add", methods=["POST"])
 def add():
@@ -91,9 +99,7 @@ def add():
     payment = request.form["payment"]
     remark = request.form["remark"]
 
-    # 模式1规则
     update_balance(amount)
-
     bal = get_balance()
     time = get_time()
 
