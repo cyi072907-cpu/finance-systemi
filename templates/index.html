@@ -3,32 +3,149 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>Boss System</title>
 
+<!-- PWA -->
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0f172a">
+
 <style>
-body{font-family:Arial;background:#0f172a;color:white;margin:0}
-.card{background:#1f2937;margin:10px;padding:15px;border-radius:10px}
-button{background:#22c55e;border:none;padding:10px;color:white;border-radius:8px}
-input,select{width:100%;padding:8px;margin:5px 0}
-table{width:100%;border-collapse:collapse}
-td,th{border-bottom:1px solid #333;padding:8px}
-a{color:#38bdf8}
+body{
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+    margin:0;
+}
+
+/* 顶部 */
+.header{
+    padding:15px;
+    font-size:18px;
+    font-weight:bold;
+    background:#111827;
+}
+
+/* 卡片 */
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+    padding:10px;
+}
+
+.card{
+    background:#1f2937;
+    padding:15px;
+    border-radius:12px;
+}
+
+/* 盈亏颜色 */
+.profit-positive{
+    color:#22c55e;
+    font-size:22px;
+    font-weight:bold;
+}
+
+.profit-negative{
+    color:#ef4444;
+    font-size:22px;
+    font-weight:bold;
+}
+
+/* 按钮 */
+button{
+    background:#22c55e;
+    border:none;
+    padding:10px;
+    color:white;
+    border-radius:8px;
+    width:100%;
+}
+
+/* 表格 */
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+}
+
+th{
+    background:#1f2937;
+    padding:8px;
+}
+
+td{
+    padding:8px;
+    border-bottom:1px solid #222;
+}
+
+/* 输入 */
+input,select{
+    width:100%;
+    padding:8px;
+    margin:5px 0;
+    border-radius:6px;
+    border:none;
+}
+
+a{
+    color:#38bdf8;
+    text-decoration:none;
+}
 </style>
 </head>
 
 <body>
 
+<div class="header">
+💰 Boss Finance System
+</div>
+
+<!-- 卡片 -->
+<div class="grid">
+
 <div class="card">
-<h2>💰 Credit: {{credit}}</h2>
-<h3>📊 今日盈亏: {{profit}}</h3>
+<h3>Credit</h3>
+<h2>{{credit}}</h2>
 </div>
 
 <div class="card">
-<h3>➕ Add</h3>
+<h3>今日盈亏</h3>
+<h2 class="{% if profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+{{profit}}
+</h2>
+</div>
+
+<div class="card">
+<h3>TNG</h3>
+<h2>{{tng}}</h2>
+</div>
+
+<div class="card">
+<h3>CASH</h3>
+<h2>{{cash}}</h2>
+</div>
+
+<div class="card">
+<h3>BANK</h3>
+<h2>{{bank}}</h2>
+</div>
+
+<div class="card">
+<h3>A</h3>
+<h2>{{a}}</h2>
+</div>
+
+</div>
+
+<!-- 添加 -->
+<div class="card" style="margin:10px;">
+<h3>➕ Add Record</h3>
 
 <form action="/add" method="POST">
-<input name="account" placeholder="Account">
-<input name="amount" type="number" placeholder="Amount">
+<input name="account" placeholder="Account" required>
+<input name="amount" type="number" placeholder="Amount" required>
 
 <select name="payment">
 <option>TNG</option>
@@ -38,11 +155,13 @@ a{color:#38bdf8}
 </select>
 
 <input name="remark" placeholder="Remark">
+
 <button type="submit">Submit</button>
 </form>
 </div>
 
-<div class="card">
+<!-- 记录 -->
+<div class="card" style="margin:10px;">
 <h3>📌 Records</h3>
 
 <table>
@@ -65,6 +184,14 @@ a{color:#38bdf8}
 {% endfor %}
 </table>
 </div>
+
+<!-- PWA 注册 -->
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/static/service-worker.js")
+    .then(() => console.log("PWA Ready"));
+}
+</script>
 
 </body>
 </html>
