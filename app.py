@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
 from datetime import datetime, timedelta
 import pytz
@@ -20,7 +20,7 @@ def today_start():
     return today() + " 00:00:00"
 
 def get_week_start():
-    tz = pytz.timezone("Asia/Kuala_Lumpur")
+    tz = pytz.timezone("Asia/Kuala_LUMPUR")
     d = datetime.now(tz)
     start = d - timedelta(days=d.weekday())
     return start.strftime("%Y-%m-%d")
@@ -51,8 +51,6 @@ def init_db():
     c.execute("""
     CREATE TABLE IF NOT EXISTS daily_close (
         date TEXT PRIMARY KEY,
-        start_credit REAL,
-        end_credit REAL,
         profit REAL
     )
     """)
@@ -119,33 +117,29 @@ def daily_settlement():
 
     date = today()
 
-    # 防重复执行
     c.execute("SELECT date FROM daily_close WHERE date=?", (date,))
     if c.fetchone():
         conn.close()
         return
 
-    start = get_value("credit")
-    end = get_value("credit")
     profit = calc_profit()
 
     c.execute("""
-    INSERT INTO daily_close
-    (date, start_credit, end_credit, profit)
-    VALUES (?,?,?,?)
-    """, (date, start, end, profit))
+    INSERT INTO daily_close (date, profit)
+    VALUES (?,?)
+    """, (date, profit))
 
     conn.commit()
     conn.close()
 
-# ================= WEEKLY CLOSE (防重复) =================
+# ================= WEEKLY CLOSE =================
 def weekly_settlement():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    week_start = get_week_start()
+    week = get_week_start()
 
-    c.execute("SELECT week FROM weekly_close WHERE week=?", (week_start,))
+    c.execute("SELECT week FROM weekly_close WHERE week=?", (week,))
     if c.fetchone():
         conn.close()
         return
@@ -153,21 +147,24 @@ def weekly_settlement():
     c.execute("""
     SELECT SUM(profit) FROM daily_close
     WHERE date >= ?
-    """, (week_start,))
+    """, (week,))
 
     result = c.fetchone()[0]
     profit = result if result else 0
 
     c.execute("""
-    INSERT INTO weekly_close
-    (week, profit)
+    INSERT INTO weekly_close (week, profit)
     VALUES (?,?)
-    """, (week_start, profit))
+    """, (week, profit))
 
     conn.commit()
     conn.close()
 
-# ================= AUTO CLOSE SAFE =================
+# ================= PUSH (V4 核心) =================
+def send_push(title, msg):
+    print(f"[PUSH] {title}: {msg}")
+
+# ================= AUTO CLOSE =================
 _last_run = None
 
 def auto_close_check():
@@ -175,20 +172,38 @@ def auto_close_check():
 
     tz = pytz.timezone("Asia/Kuala_LUMPUR")
     now = datetime.now(tz)
-    t = now.strftime("%H:%M")
-    today_key = now.strftime("%Y-%m-%d")
 
-    # 防止重复执行
+    today_key = now.strftime("%Y-%m-%d")
+    time_key = now.strftime("%H:%M")
+
     if _last_run == today_key:
         return
 
-    if t == "23:59":
+    if time_key == "23:59":
         daily_settlement()
 
         if now.weekday() == 6:
             weekly_settlement()
 
+        send_push("Daily Report", f"Profit: {calc_profit()}")
+
         _last_run = today_key
+
+# ================= API (给前端图表用) =================
+@app.route("/api/weekly")
+def api_weekly():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("""
+    SELECT week, profit FROM weekly_close
+    ORDER BY week DESC LIMIT 8
+    """)
+
+    data = c.fetchall()
+    conn.close()
+
+    return jsonify(data)
 
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
@@ -278,33 +293,14 @@ def delete(id):
 
     return redirect("/home")
 
-# ================= MANUAL BALANCE =================
+# ================= BALANCE =================
 @app.route("/set_balance", methods=["POST"])
 def set_balance():
     if not session.get("login"):
         return redirect("/")
 
-    credit = float(request.form["credit"])
-    set_value("credit", credit)
-
+    set_value("credit", float(request.form["credit"]))
     return redirect("/home")
 
-# ================= WEEKLY PAGE =================
-@app.route("/weekly")
-def weekly():
-    if not session.get("login"):
-        return redirect("/")
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("SELECT SUM(profit) FROM daily_close")
-    result = c.fetchone()[0]
-
-    conn.close()
-
-    return render_template("weekly.html", profit=result if result else 0)
-
-# ================= RUN =================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
