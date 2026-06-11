@@ -3,97 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>企业账本系统</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>Boss System</title>
 
 <style>
-body {
-    margin: 0;
-    font-family: Arial;
-    background: #0f172a;
-    color: white;
-}
-
-.header {
-    padding: 15px;
-    background: #111827;
-    font-size: 20px;
-    font-weight: bold;
-}
-
-.grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    padding: 10px;
-}
-
-.card {
-    background: #1f2937;
-    padding: 15px;
-    border-radius: 12px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #111827;
-}
-
-th, td {
-    padding: 8px;
-    border-bottom: 1px solid #222;
-}
-
-a {
-    color: #38bdf8;
-    text-decoration: none;
-    margin-right: 10px;
-}
+body{font-family:Arial;background:#0f172a;color:white;margin:0}
+.card{background:#1f2937;margin:10px;padding:15px;border-radius:10px}
+button{background:#22c55e;border:none;padding:10px;color:white;border-radius:8px}
+input,select{width:100%;padding:8px;margin:5px 0}
+table{width:100%;border-collapse:collapse}
+td,th{border-bottom:1px solid #333;padding:8px}
+a{color:#38bdf8}
 </style>
 </head>
 
 <body>
 
-<div class="header">💰 企业账本系统</div>
-
-<div class="grid">
-
 <div class="card">
-<h3>Credit</h3>
-<h2>{{credit}}</h2>
+<h2>💰 Credit: {{credit}}</h2>
+<h3>📊 今日盈亏: {{profit}}</h3>
 </div>
 
 <div class="card">
-<h3>今日盈亏</h3>
-<h2 style="color: {{ 'lime' if profit >= 0 else 'red' }}">
-{{profit}}
-</h2>
+<h3>➕ Add</h3>
+
+<form action="/add" method="POST">
+<input name="account" placeholder="Account">
+<input name="amount" type="number" placeholder="Amount">
+
+<select name="payment">
+<option>TNG</option>
+<option>Cash</option>
+<option>Bank</option>
+<option>A</option>
+</select>
+
+<input name="remark" placeholder="Remark">
+<button type="submit">Submit</button>
+</form>
 </div>
 
-<div class="card"><h3>TNG</h3><h2>{{tng}}</h2></div>
-<div class="card"><h3>CASH</h3><h2>{{cash}}</h2></div>
-<div class="card"><h3>BANK</h3><h2>{{bank}}</h2></div>
-<div class="card"><h3>A</h3><h2>{{a}}</h2></div>
-
-</div>
-
-<div style="padding:10px;">
-<a href="/history">历史记录</a>
-</div>
-
-<hr>
-
-<div style="padding:10px;">
-<h3>📌 最近记录</h3>
+<div class="card">
+<h3>📌 Records</h3>
 
 <table>
 <tr>
-<th>账号</th>
-<th>金额</th>
-<th>付款</th>
-<th>时间</th>
+<th>Acc</th>
+<th>Amt</th>
+<th>Pay</th>
+<th>Time</th>
+<th>Del</th>
 </tr>
 
 {% for r in data %}
@@ -101,11 +59,11 @@ a {
 <td>{{r[1]}}</td>
 <td>{{r[2]}}</td>
 <td>{{r[3]}}</td>
-<td>{{r[3]}}</td>
+<td>{{r[5]}}</td>
+<td><a href="/delete/{{r[0]}}">X</a></td>
 </tr>
 {% endfor %}
 </table>
-
 </div>
 
 </body>
