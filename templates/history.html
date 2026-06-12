@@ -1,16 +1,7 @@
-<h2>30天历史</h2>
-
-<table border="1">
-<tr>
-<th>账号</th><th>金额</th><th>付款</th><th>时间</th>
-</tr>
+<h2>📜 30天记录</h2>
 
 {% for r in data %}
-<tr>
-<td>{{r[1]}}</td>
-<td>{{r[2]}}</td>
-<td>{{r[3]}}</td>
-<td>{{r[7]}}</td>
-</tr>
+<div class="card">
+{{r}}
+</div>
 {% endfor %}
-</table>
