@@ -99,3 +99,25 @@
 
 </body>
 </html>
+<div class="card">
+<h3>💳 Credit控制</h3>
+
+<button onclick="document.getElementById('creditBox').style.display='block'">
+设置 Credit
+</button>
+
+<div id="creditBox" style="display:none;">
+<form method="POST" action="/set_credit">
+<input name="account" placeholder="账号">
+<input name="credit" placeholder="设置余额">
+<button>确认</button>
+</form>
+</div>
+</div>
+<div class="card">
+<h3>📊 付款统计</h3>
+
+{% for p in payment_stat %}
+<p>{{p[0]}} : {{p[1]}}</p>
+{% endfor %}
+</div>
