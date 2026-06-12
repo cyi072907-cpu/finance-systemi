@@ -11,26 +11,37 @@
 
 <div class="container">
 
-<h3>💰 总余额：{{total}}</h3>
+<h3>💰 HUAT888 财务系统</h3>
 
 <!-- ================= 四宫格 ================= -->
 <div class="grid">
 
-<a class="card">
-📈 今日交易<br>{{today_count}}笔
-</a>
+<!-- 1. CREDIT -->
+<div class="card">
+<h4>💰 总余额</h4>
+<h2>{{total}}</h2>
+</div>
 
-<a class="card" href="/report">
-📊 盈亏<br>{{today_profit}}
-</a>
+<!-- 2. 盈亏 -->
+<div class="card">
+<h4>📊 盈亏</h4>
+<h2>{{today_profit}}</h2>
+</div>
 
+<!-- 3. 历史记录 -->
 <a class="card" href="/history">
 📜 历史记录
 </a>
 
-<a class="card">
-💳 付款统计
-</a>
+<!-- 4. 付款统计（折叠） -->
+<div class="card">
+<h4>💳 付款统计</h4>
+
+{% for k,v in payment_stat.items() %}
+<div>{{k}} : {{v}}</div>
+{% endfor %}
+
+</div>
 
 </div>
 
@@ -56,13 +67,38 @@
 </form>
 </div>
 
-<!-- ================= 付款统计（修复位置） ================= -->
+<!-- ================= 今日交易 ================= -->
 <div class="card">
-<h3>💳 付款统计</h3>
+<h3>📈 今日交易：{{today_count}} 笔</h3>
+</div>
 
-{% for p in payment_stat %}
-<p>{{p[0]}} : {{p[1]}}</p>
+<!-- ================= 最近记录 ================= -->
+<div class="card">
+
+<h3>📌 最近记录</h3>
+
+<table>
+<tr>
+<th>账号</th>
+<th>金额</th>
+<th>付款</th>
+<th>前</th>
+<th>后</th>
+<th>时间</th>
+</tr>
+
+{% for r in data %}
+<tr>
+<td>{{r[1]}}</td>
+<td>{{r[2]}}</td>
+<td>{{r[3]}}</td>
+<td>{{r[5]}}</td>
+<td>{{r[6]}}</td>
+<td>{{r[7]}}</td>
+</tr>
 {% endfor %}
+</table>
+
 </div>
 
 </div>
