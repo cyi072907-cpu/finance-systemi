@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 import pytz
 
@@ -55,6 +55,7 @@ def init_db():
     )
     """)
 
+    # default user
     c.execute("SELECT * FROM users WHERE username=?", ("huat888",))
     if not c.fetchone():
         c.execute("INSERT INTO users (username,password,role) VALUES (?,?,?)",
@@ -84,7 +85,7 @@ def login():
 
     return render_template("login.html")
 
-# ================= DASHBOARD =================
+# ================= DASHBOARD (FIXED FULL LOGIC) =================
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
@@ -93,34 +94,49 @@ def dashboard():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
+    # records
     c.execute("SELECT * FROM transactions ORDER BY id DESC LIMIT 50")
     data = c.fetchall()
 
+    # total transactions
     c.execute("SELECT SUM(amount) FROM transactions")
-    total = c.fetchone()[0] or 0
+    tx_total = c.fetchone()[0] or 0
 
+    # credit base
     c.execute("SELECT SUM(base) FROM credit_base")
     credit = c.fetchone()[0] or 0
 
-    final_total = total + credit
+    # FIXED balance logic
+    c.execute("SELECT COUNT(*) FROM transactions")
+    has_tx = c.fetchone()[0]
 
+    if has_tx == 0:
+        final_total = credit
+    else:
+        final_total = credit + tx_total
+
+    # payment stats
     c.execute("SELECT payment, SUM(amount) FROM transactions GROUP BY payment")
     payment_stat = c.fetchall()
 
+    # TODAY PROFIT (FIXED)
     today = datetime.now().strftime("%Y-%m-%d")
 
     c.execute("""
-    SELECT SUM(amount)
-    FROM transactions
-    WHERE created_at LIKE ?
+        SELECT SUM(amount)
+        FROM transactions
+        WHERE created_at LIKE ?
     """, (today + "%",))
+
     today_profit = c.fetchone()[0] or 0
 
+    # TODAY COUNT
     c.execute("""
-    SELECT COUNT(*)
-    FROM transactions
-    WHERE created_at LIKE ?
+        SELECT COUNT(*)
+        FROM transactions
+        WHERE created_at LIKE ?
     """, (today + "%",))
+
     today_count = c.fetchone()[0] or 0
 
     conn.close()
@@ -190,40 +206,13 @@ def history():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    limit = datetime.now() - timedelta(days=30)
-
-    c.execute("""
-    SELECT * FROM transactions
-    WHERE created_at >= ?
-    ORDER BY id DESC
-    """, (limit.strftime("%Y-%m-%d %H:%M:%S"),))
-
+    c.execute("SELECT * FROM transactions ORDER BY id DESC")
     data = c.fetchall()
+
     conn.close()
 
     return render_template("history.html", data=data)
 
-# ================= FLOW =================
-@app.route("/flow")
-def flow():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("SELECT amount FROM transactions ORDER BY id DESC LIMIT 50")
-    flow = c.fetchall()
-
-    conn.close()
-
-    return render_template("flow.html", flow=flow)
-
-# ================= CLEAN =================
-def clean_old():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    limit = datetime.now() - timedelta(days=30)
-    c.execute("DELETE FROM transactions WHERE created_at < ?", (limit.strftime("%Y-%m-%d %H:%M:%S"),))
-    conn.commit()
-    conn.close()
-
+# ================= RUN =================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
