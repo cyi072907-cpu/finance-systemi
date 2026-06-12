@@ -48,6 +48,14 @@ def init_db():
     )
     """)
 
+    # ================= AUTO CREATE DEFAULT USER (ADDED ONLY) =================
+    c.execute("SELECT * FROM users WHERE username=?", ("admin",))
+    if not c.fetchone():
+        c.execute("""
+        INSERT INTO users (username, password, role)
+        VALUES (?, ?, ?)
+        """, ("admin", "123456", "admin"))
+
     conn.commit()
     conn.close()
 
