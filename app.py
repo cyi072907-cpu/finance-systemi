@@ -5,16 +5,16 @@ import pytz
 import os
 
 app = Flask(__name__)
-app.secret_key = "finance_v5_pro_full"
+app.secret_key = "V5PRO_ENTERPRISE"
 
 DB = "data.db"
 
-# ================= TIME (MY) =================
+# ================= TIME =================
 def now():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.now(tz)
 
-def now_str():
+def fmt():
     return now().strftime("%Y-%m-%d %H:%M:%S")
 
 # ================= DB =================
@@ -23,16 +23,16 @@ def init_db():
     c = conn.cursor()
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY,
         username TEXT,
         password TEXT
     )
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS transactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE IF NOT EXISTS transactions(
+        id INTEGER PRIMARY KEY,
         account TEXT,
         amount REAL,
         payment TEXT,
@@ -44,16 +44,11 @@ def init_db():
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS balance (
+    CREATE TABLE IF NOT EXISTS balance(
         account TEXT PRIMARY KEY,
         amount REAL
     )
     """)
-
-    # default admin
-    c.execute("SELECT * FROM users WHERE username='admin'")
-    if not c.fetchone():
-        c.execute("INSERT INTO users (username,password) VALUES ('admin','123456')")
 
     conn.commit()
     conn.close()
@@ -108,7 +103,6 @@ def add():
     payment = request.form["payment"]
     note = request.form["note"]
 
-    # -50 bug fix
     amount = abs(amount)
     if payment == "OUT":
         amount = -amount
@@ -123,11 +117,10 @@ def add():
     after = before + amount
 
     c.execute("""
-        INSERT INTO transactions
-        VALUES (NULL,?,?,?,?,?,?,?)
-    """, (account,amount,payment,note,before,after,now_str()))
+        INSERT INTO transactions VALUES(NULL,?,?,?,?,?,?,?)
+    """,(account,amount,payment,note,before,after,fmt()))
 
-    c.execute("INSERT OR REPLACE INTO balance VALUES (?,?)", (account,after))
+    c.execute("INSERT OR REPLACE INTO balance VALUES(?,?)",(account,after))
 
     conn.commit()
     conn.close()
@@ -152,7 +145,7 @@ def balance_update():
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO balance VALUES (?,?)", (account,amount))
+    c.execute("INSERT OR REPLACE INTO balance VALUES(?,?)",(account,amount))
     conn.commit()
     conn.close()
 
@@ -167,20 +160,31 @@ def balance():
     conn.close()
     return render_template("balance.html", data=data)
 
-# ================= HISTORY (30 DAYS) =================
-@app.route("/history")
+# ================= HISTORY (DATE RANGE) =================
+@app.route("/history", methods=["GET","POST"])
 def history():
-    limit = (now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
-
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT * FROM transactions WHERE created_at>=? ORDER BY id DESC", (limit,))
+
+    if request.method == "POST":
+        start = request.form["start"]
+        end = request.form["end"]
+
+        c.execute("""
+        SELECT * FROM transactions
+        WHERE created_at BETWEEN ? AND ?
+        ORDER BY id DESC
+        """,(start,end))
+    else:
+        limit = (now()-timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+        c.execute("SELECT * FROM transactions WHERE created_at>=?",(limit,))
+
     data = c.fetchall()
     conn.close()
 
     return render_template("history.html", data=data)
 
-# ================= REPORT =================
+# ================= REPORT ENGINE =================
 @app.route("/report")
 def report():
     conn = sqlite3.connect(DB)
@@ -194,23 +198,26 @@ def report():
 
     profit = income + expense
 
+    c.execute("SELECT payment, SUM(amount) FROM transactions GROUP BY payment")
+    breakdown = c.fetchall()
+
     conn.close()
 
     return render_template("report.html",
         income=income,
         expense=expense,
-        profit=profit
+        profit=profit,
+        breakdown=breakdown
     )
 
-# ================= CLEAN 30 DAYS =================
+# ================= CLEAN =================
 def clean():
-    limit = (now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+    limit = (now()-timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("DELETE FROM transactions WHERE created_at<?", (limit,))
+    c.execute("DELETE FROM transactions WHERE created_at<?",(limit,))
     conn.commit()
     conn.close()
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT",10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
