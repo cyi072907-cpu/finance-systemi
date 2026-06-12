@@ -85,7 +85,8 @@ def login():
 
     return render_template("login.html")
 
-# ================= DASHBOARD (FIXED FULL LOGIC) =================
+
+# ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
@@ -94,11 +95,10 @@ def dashboard():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    # records
     c.execute("SELECT * FROM transactions ORDER BY id DESC LIMIT 50")
     data = c.fetchall()
 
-    # total transactions
+    # 所有交易总和（带符号）
     c.execute("SELECT SUM(amount) FROM transactions")
     tx_total = c.fetchone()[0] or 0
 
@@ -106,37 +106,19 @@ def dashboard():
     c.execute("SELECT SUM(base) FROM credit_base")
     credit = c.fetchone()[0] or 0
 
-    # FIXED balance logic
-    c.execute("SELECT COUNT(*) FROM transactions")
-    has_tx = c.fetchone()[0]
-
-if has_tx == 0:
-    final_total = credit
-else:
+    # ✅ 核心修复：总余额 = credit - 所有交易
     final_total = credit - tx_total
 
-    # payment stats
+    # payment stat
     c.execute("SELECT payment, SUM(amount) FROM transactions GROUP BY payment")
     payment_stat = c.fetchall()
 
-    # TODAY PROFIT (FIXED)
+    # today profit
     today = datetime.now().strftime("%Y-%m-%d")
+    c.execute("SELECT SUM(amount) FROM transactions WHERE created_at LIKE ?", (today+"%",))
+    today_profit = c.fetchone()[0] or 0
 
-    c.execute("""
-        SELECT SUM(amount)
-        FROM transactions
-        WHERE created_at LIKE ?
-    """, (today + "%",))
-
-    today_profit = -(c.fetchone()[0] or 0)
-
-    # TODAY COUNT
-    c.execute("""
-        SELECT COUNT(*)
-        FROM transactions
-        WHERE created_at LIKE ?
-    """, (today + "%",))
-
+    c.execute("SELECT COUNT(*) FROM transactions WHERE created_at LIKE ?", (today+"%",))
     today_count = c.fetchone()[0] or 0
 
     conn.close()
@@ -150,7 +132,8 @@ else:
         today_count=today_count
     )
 
-# ================= ADD =================
+
+# ================= ADD TRANSACTION =================
 @app.route("/add", methods=["POST"])
 def add():
     account = request.form["account"]
@@ -159,6 +142,8 @@ def add():
     note = request.form["note"]
 
     amount = abs(amount)
+
+    # OUT = 负数（增加余额）
     if payment == "OUT":
         amount = -amount
 
@@ -175,16 +160,17 @@ def add():
         INSERT INTO transactions
         (account,amount,payment,note,balance_before,balance_after,created_at)
         VALUES (?,?,?,?,?,?,?)
-    """, (account,amount,payment,note,old,new,now()))
+    """, (account, amount, payment, note, old, new, now()))
 
-    c.execute("INSERT OR REPLACE INTO manual_balance VALUES (?,?)", (account,new))
+    c.execute("INSERT OR REPLACE INTO manual_balance VALUES (?,?)", (account, new))
 
     conn.commit()
     conn.close()
 
     return redirect("/dashboard")
 
-# ================= CREDIT SET =================
+
+# ================= SET CREDIT =================
 @app.route("/set_credit", methods=["POST"])
 def set_credit():
     account = request.form["account"]
@@ -193,26 +179,64 @@ def set_credit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("INSERT OR REPLACE INTO credit_base VALUES (?,?)", (account,credit))
+    c.execute("INSERT OR REPLACE INTO credit_base VALUES (?,?)", (account, credit))
 
     conn.commit()
     conn.close()
 
     return redirect("/dashboard")
 
-# ================= HISTORY =================
-@app.route("/history")
+
+# ================= HISTORY (支持筛选) =================
+@app.route("/history", methods=["GET","POST"])
 def history():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT * FROM transactions ORDER BY id DESC")
+    query = "SELECT * FROM transactions WHERE 1=1"
+    params = []
+
+    if request.method == "POST":
+        start = request.form.get("start")
+        end = request.form.get("end")
+        payment = request.form.get("payment")
+
+        if payment:
+            query += " AND payment=?"
+            params.append(payment)
+
+        if start:
+            query += " AND created_at >= ?"
+            params.append(start)
+
+        if end:
+            query += " AND created_at <= ?"
+            params.append(end)
+
+    query += " ORDER BY id DESC"
+
+    c.execute(query, params)
     data = c.fetchall()
 
     conn.close()
 
     return render_template("history.html", data=data)
 
+
+# ================= REPORT =================
+@app.route("/report")
+def report():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("SELECT SUM(amount) FROM transactions")
+    total = c.fetchone()[0] or 0
+
+    conn.close()
+
+    return render_template("report.html", total=total)
+
+
 # ================= RUN =================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
