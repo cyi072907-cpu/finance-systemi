@@ -1,13 +1,14 @@
-<h2>📜 历史记录</h2>
+<h2>📜 90 DAYS HISTORY</h2>
 
-<form method="POST">
-<input name="start" placeholder="开始时间">
-<input name="end" placeholder="结束时间">
-<button>查询</button>
-</form>
+<table>
+<tr><th>Account</th><th>Amount</th><th>Payment</th><th>Time</th></tr>
 
 {% for r in data %}
-<div class="card">
-{{r}}
-</div>
+<tr>
+<td>{{r[1]}}</td>
+<td>{{r[2]}}</td>
+<td>{{r[3]}}</td>
+<td>{{r[7]}}</td>
+</tr>
 {% endfor %}
+</table>
