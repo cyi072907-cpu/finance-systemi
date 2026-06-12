@@ -1,31 +1,11 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>盈亏报表</title>
-<link rel="stylesheet" href="/static/style.css">
-</head>
-
-<body>
-
-<div class="container">
-
 <h2>📊 今日盈亏</h2>
 
 <div class="card">
-
+<h1>
 {% if total > 0 %}
-<h1>+{{total}}</h1>
-{% elif total < 0 %}
-<h1>{{total}}</h1>
++{{total}}
 {% else %}
-<h1>0</h1>
+{{total}}
 {% endif %}
-
+</h1>
 </div>
-
-</div>
-
-</body>
-</html>
