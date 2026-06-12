@@ -1,7 +1,7 @@
 {
-  "name": "Boss Finance System V2",
-  "short_name": "BossFinance",
-  "start_url": "/home",
+  "name": "Finance V5 PRO",
+  "short_name": "Finance",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
