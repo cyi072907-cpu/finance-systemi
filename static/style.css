@@ -9,7 +9,7 @@ body{
     padding:15px;
 }
 
-/* ===== 强制 2x2 四宫格 ===== */
+/* ===== 2x2 固定布局 ===== */
 .grid{
     display:grid;
     grid-template-columns: repeat(2, 1fr);
@@ -17,15 +17,46 @@ body{
     margin-bottom:15px;
 }
 
+/* 卡片 */
 .card{
     background:#1e293b;
     padding:15px;
     border-radius:12px;
     text-align:center;
-    min-height:80px;
 }
 
-/* 表格 */
+/* 按钮卡片 */
+a.card{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    color:white;
+    font-weight:bold;
+    height:80px;
+    font-size:16px;
+}
+
+/* 输入 */
+input,select{
+    width:100%;
+    padding:10px;
+    margin:5px 0;
+    border-radius:8px;
+    border:none;
+}
+
+button{
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#22c55e;
+    color:white;
+    font-weight:bold;
+}
+
+/* table */
 table{
     width:100%;
     font-size:12px;
@@ -36,24 +67,4 @@ td,th{
     padding:6px;
     text-align:center;
     border-bottom:1px solid #333;
-}
-
-/* 输入框 */
-input,select{
-    width:100%;
-    padding:10px;
-    margin:5px 0;
-    border-radius:8px;
-    border:none;
-}
-
-/* 按钮 */
-button{
-    width:100%;
-    padding:10px;
-    border:none;
-    border-radius:8px;
-    background:#22c55e;
-    color:white;
-    font-weight:bold;
 }
