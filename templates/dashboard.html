@@ -16,30 +16,36 @@
 <!-- ================= 2x2 四宫格 ================= -->
 <div class="grid">
 
-<a class="card">
-💰 总余额<br>
-{{total}}
-</a>
-
-<a class="card">
-📊 盈亏<br>
-{{today_profit}}
-</a>
-
-<a class="card">
-📈 今日交易<br>
+<div class="card">
+📊 今日交易<br>
 {{today_count}} 笔
-</a>
+</div>
 
-<a class="card">
-💳 付款统计<br>
+<div class="card">
+📈 盈亏<br>
+{{today_profit}}
+</div>
 
-{% for k, v in payment_stat.items() %}
-{{k}}：{{v}}<br>
+<div class="card">
+💳 总余额 / Credit<br>
+{{total}}
+</div>
+
+<div class="card">
+📜 历史记录
+</div>
+
+</div>
+
+<!-- ================= 付款统计（可展开） ================= -->
+<div class="card">
+<h3 onclick="togglePay()">📦 付款统计 (点击展开)</h3>
+
+<div id="payBox" style="display:none;">
+{% for p in payment_stat %}
+<p>{{p[0]}} : {{p[1]}}</p>
 {% endfor %}
-
-</a>
-
+</div>
 </div>
 
 <!-- ================= 添加记录 ================= -->
@@ -48,7 +54,6 @@
 <form method="POST" action="/add">
 
 <input name="account" placeholder="账号">
-
 <input name="amount" placeholder="金额">
 
 <select name="payment">
@@ -73,7 +78,6 @@
 <h3>📌 最近记录</h3>
 
 <table>
-
 <tr>
 <th>账号</th>
 <th>金额</th>
@@ -99,6 +103,17 @@
 </div>
 
 </div>
+
+<script>
+function togglePay(){
+    var box = document.getElementById("payBox");
+    if(box.style.display === "none"){
+        box.style.display = "block";
+    }else{
+        box.style.display = "none";
+    }
+}
+</script>
 
 </body>
 </html>
