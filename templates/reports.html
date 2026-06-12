@@ -2,8 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>盈亏报表</title>
+<title>盈亏</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
 
@@ -16,12 +15,10 @@
 <div class="card">
 
 <h1>
-{% if today_profit > 0 %}
-+{{today_profit}}
-{% elif today_profit < 0 %}
-{{today_profit}}
+{% if total > 0 %}
++{{total}}
 {% else %}
-0
+{{total}}
 {% endif %}
 </h1>
 
