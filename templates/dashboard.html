@@ -11,45 +11,44 @@
 
 <div class="container">
 
-<h3>💰 HUAT888 财务系统</h3>
+<h2>💰 HUAT888 财务系统</h2>
 
-<!-- ================= 四宫格 ================= -->
+<!-- ================= 2x2 四宫格 ================= -->
 <div class="grid">
 
-<!-- 1. CREDIT -->
-<div class="card">
-<h4>💰 总余额</h4>
-<h2>{{total}}</h2>
-</div>
-
-<!-- 2. 盈亏 -->
-<div class="card">
-<h4>📊 盈亏</h4>
-<h2>{{today_profit}}</h2>
-</div>
-
-<!-- 3. 历史记录 -->
-<a class="card" href="/history">
-📜 历史记录
+<a class="card">
+💰 总余额<br>
+{{total}}
 </a>
 
-<!-- 4. 付款统计（折叠） -->
-<div class="card">
-<h4>💳 付款统计</h4>
+<a class="card">
+📊 盈亏<br>
+{{today_profit}}
+</a>
 
-{% for k,v in payment_stat.items() %}
-<div>{{k}} : {{v}}</div>
+<a class="card">
+📈 今日交易<br>
+{{today_count}} 笔
+</a>
+
+<a class="card">
+💳 付款统计<br>
+
+{% for k, v in payment_stat.items() %}
+{{k}}：{{v}}<br>
 {% endfor %}
 
-</div>
+</a>
 
 </div>
 
-<!-- ================= 输入 ================= -->
-<div class="card">
+<!-- ================= 添加记录 ================= -->
+<div class="card" id="add">
+
 <form method="POST" action="/add">
 
 <input name="account" placeholder="账号">
+
 <input name="amount" placeholder="金额">
 
 <select name="payment">
@@ -65,11 +64,7 @@
 <button>提交</button>
 
 </form>
-</div>
 
-<!-- ================= 今日交易 ================= -->
-<div class="card">
-<h3>📈 今日交易：{{today_count}} 笔</h3>
 </div>
 
 <!-- ================= 最近记录 ================= -->
@@ -78,6 +73,7 @@
 <h3>📌 最近记录</h3>
 
 <table>
+
 <tr>
 <th>账号</th>
 <th>金额</th>
@@ -97,6 +93,7 @@
 <td>{{r[7]}}</td>
 </tr>
 {% endfor %}
+
 </table>
 
 </div>
