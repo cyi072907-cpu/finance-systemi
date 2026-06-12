@@ -11,26 +11,18 @@
 
 <div class="container">
 
-<h2>📜 历史记录</h2>
-
-<div class="card">
-
-<form method="POST">
-<input name="payment" placeholder="付款方式">
-<input name="start" type="datetime-local">
-<input name="end" type="datetime-local">
-<button>筛选</button>
-</form>
-
-</div>
+<h3>📜 历史记录</h3>
 
 <div class="card">
 
 <table>
+
 <tr>
 <th>账号</th>
 <th>金额</th>
 <th>付款</th>
+<th>前</th>
+<th>后</th>
 <th>时间</th>
 </tr>
 
@@ -39,9 +31,12 @@
 <td>{{r[1]}}</td>
 <td>{{r[2]}}</td>
 <td>{{r[3]}}</td>
+<td>{{r[5]}}</td>
+<td>{{r[6]}}</td>
 <td>{{r[7]}}</td>
 </tr>
 {% endfor %}
+
 </table>
 
 </div>
