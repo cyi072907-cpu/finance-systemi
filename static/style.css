@@ -1,23 +1,26 @@
 body{
-font-family: Arial;
-background:#0f172a;
-color:white;
-text-align:center;
+    margin:0;
+    font-family:Arial;
+    background:#0b1220;
+    color:white;
 }
 
-.box{
-width:300px;
-margin:auto;
-margin-top:100px;
-background:#1f2937;
-padding:20px;
-border-radius:10px;
+.card{
+    background:#1e293b;
+    margin:10px;
+    padding:12px;
+    border-radius:14px;
 }
 
 input,select,button{
-width:90%;
-padding:10px;
-margin:5px;
-border-radius:8px;
-border:none;
+    width:100%;
+    padding:10px;
+    margin:5px 0;
+    border-radius:10px;
+    border:none;
+}
+
+button{
+    background:#22c55e;
+    color:white;
 }
