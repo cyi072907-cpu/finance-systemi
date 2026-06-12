@@ -1,13 +1,11 @@
-<h2>💰 余额控制</h2>
+<h2>💳 CREDIT CONTROL</h2>
 
-<form method="POST">
-<input name="account" placeholder="账号">
-<input name="amount" placeholder="金额">
-<button>更新</button>
+<form method="POST" action="/update_balance">
+<input name="account" placeholder="Account">
+<input name="credit" placeholder="Set Credit">
+<button>Update</button>
 </form>
 
 {% for r in data %}
-<div class="card">
-{{r}}
-</div>
+<p>{{r[0]}} : {{r[1]}}</p>
 {% endfor %}
