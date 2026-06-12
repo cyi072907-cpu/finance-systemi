@@ -75,9 +75,11 @@ def login():
         conn = sqlite3.connect(DB)
         c = conn.cursor()
         c.execute("SELECT * FROM users WHERE username=? AND password=?", (u,p))
+
         if c.fetchone():
             session["user"] = u
             return redirect("/dashboard")
+
         return "登录失败"
 
     return render_template("login.html")
@@ -97,16 +99,40 @@ def dashboard():
     c.execute("SELECT SUM(amount) FROM transactions")
     total = c.fetchone()[0] or 0
 
-    # payment统计
+    c.execute("SELECT SUM(base) FROM credit_base")
+    credit = c.fetchone()[0] or 0
+
+    final_total = total + credit
+
     c.execute("SELECT payment, SUM(amount) FROM transactions GROUP BY payment")
     payment_stat = c.fetchall()
 
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    c.execute("""
+    SELECT SUM(amount)
+    FROM transactions
+    WHERE created_at LIKE ?
+    """, (today + "%",))
+    today_profit = c.fetchone()[0] or 0
+
+    c.execute("""
+    SELECT COUNT(*)
+    FROM transactions
+    WHERE created_at LIKE ?
+    """, (today + "%",))
+    today_count = c.fetchone()[0] or 0
+
     conn.close()
 
-    return render_template("dashboard.html",
-                           data=data,
-                           total=total,
-                           payment_stat=payment_stat)
+    return render_template(
+        "dashboard.html",
+        data=data,
+        total=final_total,
+        payment_stat=payment_stat,
+        today_profit=today_profit,
+        today_count=today_count
+    )
 
 # ================= ADD =================
 @app.route("/add", methods=["POST"])
@@ -142,7 +168,7 @@ def add():
 
     return redirect("/dashboard")
 
-# ================= CREDIT MODAL SET =================
+# ================= CREDIT SET =================
 @app.route("/set_credit", methods=["POST"])
 def set_credit():
     account = request.form["account"]
@@ -158,51 +184,46 @@ def set_credit():
 
     return redirect("/dashboard")
 
-# ================= HISTORY FILTER =================
-@app.route("/history", methods=["GET","POST"])
+# ================= HISTORY =================
+@app.route("/history")
 def history():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    query = "SELECT * FROM transactions WHERE 1=1"
-    params = []
+    limit = datetime.now() - timedelta(days=30)
 
-    if request.method == "POST":
-        if request.form.get("payment"):
-            query += " AND payment=?"
-            params.append(request.form["payment"])
+    c.execute("""
+    SELECT * FROM transactions
+    WHERE created_at >= ?
+    ORDER BY id DESC
+    """, (limit.strftime("%Y-%m-%d %H:%M:%S"),))
 
-        if request.form.get("start") and request.form.get("end"):
-            query += " AND created_at BETWEEN ? AND ?"
-            params.append(request.form["start"])
-            params.append(request.form["end"])
-
-    query += " ORDER BY id DESC"
-
-    c.execute(query, params)
     data = c.fetchall()
-
     conn.close()
 
     return render_template("history.html", data=data)
 
-# ================= TODAY PROFIT =================
-@app.route("/report")
-def report():
+# ================= FLOW =================
+@app.route("/flow")
+def flow():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    c.execute("SELECT amount FROM transactions WHERE created_at LIKE ?", (today+"%",))
-    data = c.fetchall()
-
-    total = sum([x[0] for x in data]) if data else 0
+    c.execute("SELECT amount FROM transactions ORDER BY id DESC LIMIT 50")
+    flow = c.fetchall()
 
     conn.close()
 
-    return render_template("report.html", total=total)
+    return render_template("flow.html", flow=flow)
 
-# ================= RUN =================
+# ================= CLEAN =================
+def clean_old():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    limit = datetime.now() - timedelta(days=30)
+    c.execute("DELETE FROM transactions WHERE created_at < ?", (limit.strftime("%Y-%m-%d %H:%M:%S"),))
+    conn.commit()
+    conn.close()
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
