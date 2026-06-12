@@ -2,17 +2,29 @@ from flask import Flask, render_template, request, redirect, session
 import sqlite3
 from datetime import datetime, timedelta
 import os
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = "finance_v5_pro"
 
 DB = "data.db"
 
+# ================= LOGIN CHECK =================
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if "user" not in session:
+            return redirect("/")
+        return f(*args, **kwargs)
+    return wrapper
+
+
 # ================= DB INIT =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
+    # users table
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +34,7 @@ def init_db():
     )
     """)
 
+    # transactions table
     c.execute("""
     CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +48,7 @@ def init_db():
     )
     """)
 
+    # manual balance
     c.execute("""
     CREATE TABLE IF NOT EXISTS manual_balance (
         account TEXT PRIMARY KEY,
@@ -42,10 +56,19 @@ def init_db():
     )
     """)
 
+    # ================= AUTO ADMIN ACCOUNT =================
+    c.execute("SELECT * FROM users WHERE username=?", ("admin",))
+    if not c.fetchone():
+        c.execute(
+            "INSERT INTO users (username, password, role) VALUES (?,?,?)",
+            ("admin", "123456", "boss")
+        )
+
     conn.commit()
     conn.close()
 
 init_db()
+
 
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
@@ -56,7 +79,10 @@ def login():
 
         conn = sqlite3.connect(DB)
         c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+        c.execute(
+            "SELECT * FROM users WHERE username=? AND password=?",
+            (username, password)
+        )
         user = c.fetchone()
         conn.close()
 
@@ -69,17 +95,17 @@ def login():
     return render_template("login.html")
 
 
+# ================= LOGOUT =================
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
+
 # ================= DASHBOARD =================
 @app.route("/dashboard")
+@login_required
 def dashboard():
-    if "user" not in session:
-        return redirect("/")
-
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
@@ -93,7 +119,8 @@ def dashboard():
 
     return render_template("dashboard.html", data=data, total=total)
 
-# ================= ADD =================
+
+# ================= ADD TRANSACTION =================
 @app.route("/add", methods=["POST"])
 def add():
     account = request.form["account"]
@@ -101,27 +128,40 @@ def add():
     payment = request.form["payment"]
     note = request.form["note"]
 
-    # ✅ 修复 -50 bug（核心）
-    amount = abs(amount)
+    # ================= FIX -50 BUG =================
+    amount = float(abs(amount))
 
-    if payment == "OUT":
-        amount = -amount
+    if payment.upper() == "OUT":
+        amount = -abs(amount)
+    else:
+        amount = abs(amount)
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
+    # get old balance
     c.execute("SELECT balance FROM manual_balance WHERE account=?", (account,))
     row = c.fetchone()
     old_balance = row[0] if row else 0
 
     new_balance = old_balance + amount
 
+    # insert transaction
     c.execute("""
         INSERT INTO transactions
         (account, amount, payment, note, balance_before, balance_after, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (account, amount, payment, note, old_balance, new_balance, datetime.now()))
+    """, (
+        account,
+        amount,
+        payment,
+        note,
+        old_balance,
+        new_balance,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
 
+    # update balance
     c.execute("""
         INSERT OR REPLACE INTO manual_balance (account, balance)
         VALUES (?, ?)
@@ -132,8 +172,10 @@ def add():
 
     return redirect("/dashboard")
 
+
 # ================= BALANCE =================
 @app.route("/balance", methods=["GET", "POST"])
+@login_required
 def balance():
     if request.method == "POST":
         account = request.form["account"]
@@ -141,7 +183,9 @@ def balance():
 
         conn = sqlite3.connect(DB)
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO manual_balance VALUES (?,?)", (account, new_balance))
+        c.execute("""
+            INSERT OR REPLACE INTO manual_balance VALUES (?,?)
+        """, (account, new_balance))
         conn.commit()
         conn.close()
 
@@ -153,31 +197,55 @@ def balance():
 
     return render_template("balance.html", data=data)
 
-# ================= HISTORY (30天) =================
+
+# ================= HISTORY (30 DAYS) =================
 @app.route("/history")
+@login_required
 def history():
     limit_date = datetime.now() - timedelta(days=30)
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT * FROM transactions WHERE created_at >= ? ORDER BY id DESC",
-              (limit_date,))
+    # stable version (no datetime compare bug)
+    c.execute("""
+        SELECT * FROM transactions
+        ORDER BY id DESC
+    """)
 
     data = c.fetchall()
     conn.close()
 
-    return render_template("history.html", data=data)
+    # filter last 30 days in python
+    filtered = []
+    for row in data:
+        try:
+            t = datetime.strptime(row[7], "%Y-%m-%d %H:%M:%S")
+            if t >= limit_date:
+                filtered.append(row)
+        except:
+            pass
 
-# ================= AUTO CLEAN =================
+    return render_template("history.html", data=filtered)
+
+
+# ================= AUTO CLEAN OLD DATA =================
 def clean_old():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     limit = datetime.now() - timedelta(days=30)
-    c.execute("DELETE FROM transactions WHERE created_at < ?", (limit,))
+
+    c.execute("""
+        DELETE FROM transactions
+        WHERE created_at < ?
+    """, (limit.strftime("%Y-%m-%d %H:%M:%S"),))
+
     conn.commit()
     conn.close()
 
+
+# ================= RUN =================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
