@@ -1,7 +1,28 @@
-<h2>📜 90 DAYS HISTORY</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>历史记录</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>📜 90天历史记录</h2>
+
+<div class="card">
 
 <table>
-<tr><th>Account</th><th>Amount</th><th>Payment</th><th>Time</th></tr>
+
+<tr>
+<th>账号</th>
+<th>金额</th>
+<th>付款</th>
+<th>时间</th>
+</tr>
 
 {% for r in data %}
 <tr>
@@ -11,4 +32,12 @@
 <td>{{r[7]}}</td>
 </tr>
 {% endfor %}
+
 </table>
+
+</div>
+
+</div>
+
+</body>
+</html>
