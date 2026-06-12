@@ -1,45 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>History</title>
+<h2>30天历史</h2>
 
-<style>
-body{
-    margin:0;
-    font-family:Arial;
-    background:#0f172a;
-    color:white;
-}
-.container{padding:15px;}
-
-table{
-    width:100%;
-    font-size:12px;
-    border-collapse:collapse;
-}
-
-td,th{
-    padding:8px;
-    border-bottom:1px solid #333;
-    text-align:center;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-
-<h2>📜 30天历史记录</h2>
-
-<table>
+<table border="1">
 <tr>
-<th>账号</th>
-<th>金额</th>
-<th>付款</th>
-<th>时间</th>
+<th>账号</th><th>金额</th><th>付款</th><th>时间</th>
 </tr>
 
 {% for r in data %}
@@ -51,8 +14,3 @@ td,th{
 </tr>
 {% endfor %}
 </table>
-
-</div>
-
-</body>
-</html>
