@@ -1,15 +1,8 @@
 {
-  "name": "Finance V5 PRO",
+  "name": "V5 PRO FINANCE",
   "short_name": "Finance",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "icons": [
-    {
-      "src": "/static/icon.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220"
 }
