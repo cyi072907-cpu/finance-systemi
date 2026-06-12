@@ -1,44 +1,128 @@
-<h2>💰 V5 PRO 控制台</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<p>总盈亏：{{ total }}</p>
+<title>Finance App</title>
 
-<form method="POST" action="/add">
-<input name="account" placeholder="账号">
-<input name="amount" placeholder="金额">
+<style>
+body{
+    margin:0;
+    font-family: Arial;
+    background:#0f172a;
+    color:white;
+}
+
+.container{
+    padding:15px;
+}
+
+.card{
+    background:#1e293b;
+    padding:15px;
+    border-radius:12px;
+    margin-bottom:10px;
+}
+
+input,select{
+    width:100%;
+    padding:10px;
+    margin:5px 0;
+    border-radius:8px;
+    border:none;
+}
+
+button{
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#22c55e;
+    color:white;
+}
+
+table{
+    width:100%;
+    font-size:12px;
+    background:#111827;
+    border-radius:10px;
+    overflow:hidden;
+}
+
+td,th{
+    padding:6px;
+    text-align:center;
+    border-bottom:1px solid #333;
+}
+
+.edit{
+    color:yellow;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>💰 Finance App V5 Pro</h2>
+
+<div class="card">
+<h3>Total: {{total}}</h3>
+</div>
+
+<div class="card">
+<form action="/add" method="post">
+<input name="account" placeholder="Account">
+<input name="amount" placeholder="Amount">
 
 <select name="payment">
-<option value="CASH">CASH</option>
-<option value="TNG">TNG</option>
-<option value="BANK">BANK</option>
-<option value="OUT">出金</option>
+<option>CASH</option>
+<option>TNG</option>
+<option>BANK</option>
+<option>OUT</option>
 </select>
 
-<input name="note" placeholder="备注">
-<button>提交</button>
+<input name="note" placeholder="Note">
+<button>Submit</button>
 </form>
+</div>
 
-<hr>
-
-<table border="1">
+<div class="card">
+<table>
 <tr>
-<th>账号</th>
-<th>金额</th>
-<th>付款</th>
-<th>备注</th>
-<th>前</th>
-<th>后</th>
-<th>时间</th>
+<th>ID</th>
+<th>Acc</th>
+<th>Amt</th>
+<th>Pay</th>
+<th>Before</th>
+<th>After</th>
+<th>Time</th>
+<th>Edit</th>
 </tr>
 
 {% for r in data %}
 <tr>
+<td>{{r[0]}}</td>
 <td>{{r[1]}}</td>
 <td>{{r[2]}}</td>
 <td>{{r[3]}}</td>
-<td>{{r[4]}}</td>
 <td>{{r[5]}}</td>
 <td>{{r[6]}}</td>
 <td>{{r[7]}}</td>
+<td>
+<a class="edit" href="/update_payment/{{r[0]}}/CASH">C</a>
+<a class="edit" href="/update_payment/{{r[0]}}/TNG">T</a>
+<a class="edit" href="/update_payment/{{r[0]}}/BANK">B</a>
+</td>
 </tr>
 {% endfor %}
+
 </table>
+</div>
+
+</div>
+
+</body>
+</html>
