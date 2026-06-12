@@ -5,50 +5,51 @@ import pytz
 import os
 
 app = Flask(__name__)
-app.secret_key = "V5PRO_ENTERPRISE"
+app.secret_key = "huat888_finance"
 
 DB = "data.db"
 
 # ================= TIME =================
 def now():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
-    return datetime.now(tz)
+    return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-def fmt():
-    return now().strftime("%Y-%m-%d %H:%M:%S")
-
-# ================= DB =================
+# ================= INIT DB =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS users(
-        id INTEGER PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS users (
         username TEXT,
         password TEXT
     )
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS transactions(
-        id INTEGER PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         account TEXT,
         amount REAL,
         payment TEXT,
         note TEXT,
-        before_balance REAL,
-        after_balance REAL,
+        balance_before REAL,
+        balance_after REAL,
         created_at TEXT
     )
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS balance(
+    CREATE TABLE IF NOT EXISTS balance (
         account TEXT PRIMARY KEY,
-        amount REAL
+        credit REAL
     )
     """)
+
+    # default user
+    c.execute("SELECT * FROM users WHERE username='huat888'")
+    if not c.fetchone():
+        c.execute("INSERT INTO users VALUES (?,?)", ("huat888", "Aaa8888"))
 
     conn.commit()
     conn.close()
@@ -72,7 +73,7 @@ def login():
             session["user"] = u
             return redirect("/dashboard")
 
-        return "登录失败"
+        return "Login Failed"
 
     return render_template("login.html")
 
@@ -110,47 +111,50 @@ def add():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT amount FROM balance WHERE account=?", (account,))
+    c.execute("SELECT credit FROM balance WHERE account=?", (account,))
     row = c.fetchone()
-    before = row[0] if row else 0
+    old = row[0] if row else 0
 
-    after = before + amount
+    new = old + amount
 
     c.execute("""
-        INSERT INTO transactions VALUES(NULL,?,?,?,?,?,?,?)
-    """,(account,amount,payment,note,before,after,fmt()))
+        INSERT INTO transactions
+        (account, amount, payment, note, balance_before, balance_after, created_at)
+        VALUES (?,?,?,?,?,?,?)
+    """, (account, amount, payment, note, old, new, now()))
 
-    c.execute("INSERT OR REPLACE INTO balance VALUES(?,?)",(account,after))
+    c.execute("INSERT OR REPLACE INTO balance VALUES (?,?)", (account, new))
 
     conn.commit()
     conn.close()
 
     return redirect("/dashboard")
 
-# ================= PAYMENT EDIT =================
-@app.route("/edit_payment/<int:id>/<payment>")
-def edit_payment(id,payment):
+# ================= UPDATE PAYMENT =================
+@app.route("/update_payment/<int:id>/<pay>")
+def update_payment(id, pay):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("UPDATE transactions SET payment=? WHERE id=?", (payment,id))
+    c.execute("UPDATE transactions SET payment=? WHERE id=?", (pay,id))
     conn.commit()
     conn.close()
     return redirect("/dashboard")
 
-# ================= BALANCE CONTROL =================
-@app.route("/balance_update", methods=["POST"])
-def balance_update():
+# ================= BALANCE UPDATE =================
+@app.route("/update_balance", methods=["POST"])
+def update_balance():
     account = request.form["account"]
-    amount = float(request.form["amount"])
+    credit = float(request.form["credit"])
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO balance VALUES(?,?)",(account,amount))
+    c.execute("INSERT OR REPLACE INTO balance VALUES (?,?)", (account, credit))
     conn.commit()
     conn.close()
 
     return redirect("/balance")
 
+# ================= BALANCE PAGE =================
 @app.route("/balance")
 def balance():
     conn = sqlite3.connect(DB)
@@ -160,64 +164,46 @@ def balance():
     conn.close()
     return render_template("balance.html", data=data)
 
-# ================= HISTORY (DATE RANGE) =================
-@app.route("/history", methods=["GET","POST"])
+# ================= HISTORY (90 DAYS) =================
+@app.route("/history")
 def history():
+    limit = datetime.now() - timedelta(days=90)
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    if request.method == "POST":
-        start = request.form["start"]
-        end = request.form["end"]
-
-        c.execute("""
-        SELECT * FROM transactions
-        WHERE created_at BETWEEN ? AND ?
-        ORDER BY id DESC
-        """,(start,end))
-    else:
-        limit = (now()-timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
-        c.execute("SELECT * FROM transactions WHERE created_at>=?",(limit,))
+    c.execute("SELECT * FROM transactions WHERE created_at>=? ORDER BY id DESC",
+              (limit.strftime("%Y-%m-%d %H:%M:%S"),))
 
     data = c.fetchall()
     conn.close()
 
     return render_template("history.html", data=data)
 
-# ================= REPORT ENGINE =================
+# ================= REPORT =================
 @app.route("/report")
 def report():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT SUM(amount) FROM transactions WHERE amount>0")
-    income = c.fetchone()[0] or 0
-
-    c.execute("SELECT SUM(amount) FROM transactions WHERE amount<0")
-    expense = c.fetchone()[0] or 0
-
-    profit = income + expense
+    c.execute("SELECT SUM(amount) FROM transactions")
+    total = c.fetchone()[0] or 0
 
     c.execute("SELECT payment, SUM(amount) FROM transactions GROUP BY payment")
-    breakdown = c.fetchall()
+    payment = c.fetchall()
 
-    conn.close()
+    profit = total
 
-    return render_template("report.html",
-        income=income,
-        expense=expense,
-        profit=profit,
-        breakdown=breakdown
-    )
+    return render_template("report.html", total=total, payment=payment, profit=profit)
 
-# ================= CLEAN =================
+# ================= AUTO CLEAN =================
 def clean():
-    limit = (now()-timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("DELETE FROM transactions WHERE created_at<?",(limit,))
+    limit = datetime.now() - timedelta(days=90)
+    c.execute("DELETE FROM transactions WHERE created_at<?", (limit.strftime("%Y-%m-%d %H:%M:%S"),))
     conn.commit()
     conn.close()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
