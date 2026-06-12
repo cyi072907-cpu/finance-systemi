@@ -1,22 +1,3 @@
-<h2>{{title}}</h2>
-
-<table border="1" width="100%">
-<tr>
-    <th>账号</th>
-    <th>金额</th>
-    <th>付款方式</th>
-    <th>时间</th>
-</tr>
-
-{% for r in data %}
-<tr>
-    <td>{{r[0]}}</td>
-    <td>{{r[1]}}</td>
-    <td>{{r[2]}}</td>
-    <td>{{r[3]}}</td>
-</tr>
-{% endfor %}
-</table>
 <h2>📊 盈亏报表</h2>
 
 <div class="card">
@@ -30,3 +11,11 @@
 <div class="card">
 净利润：{{profit}}
 </div>
+
+<h3>付款方式统计</h3>
+
+{% for p in breakdown %}
+<div class="card">
+{{p}}
+</div>
+{% endfor %}
