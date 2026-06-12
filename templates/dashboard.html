@@ -13,19 +13,14 @@
 
 <h2>💰 HUAT888 财务系统</h2>
 
-<!-- ================= 四大功能卡片 ================= -->
 <div class="grid">
 
-<a class="card" href="javascript:void(0)">
-📈 今日交易
-<br>
-{{today_count}}笔
+<a class="card">
+📈 今日交易<br>{{today_count}} 笔
 </a>
 
 <a class="card" href="/report">
-📊 盈亏
-<br>
-{{today_profit}}
+📊 盈亏<br>{{today_profit}}
 </a>
 
 <a class="card" href="/history">
@@ -38,18 +33,14 @@
 
 </div>
 
-<!-- ================= 总金额 ================= -->
 <div class="card">
 <h3>💰 总余额：{{total}}</h3>
 </div>
 
-<!-- ================= 输入 ================= -->
 <div class="card" id="add">
-
 <form method="POST" action="/add">
 
 <input name="account" placeholder="账号">
-
 <input name="amount" placeholder="金额">
 
 <select name="payment">
@@ -61,20 +52,15 @@
 </select>
 
 <input name="note" placeholder="备注">
-
 <button>提交</button>
 
 </form>
-
 </div>
 
-<!-- ================= 最近记录 ================= -->
 <div class="card">
-
 <h3>📌 最近记录</h3>
 
 <table>
-
 <tr>
 <th>账号</th>
 <th>金额</th>
@@ -94,15 +80,10 @@
 <td>{{r[7]}}</td>
 </tr>
 {% endfor %}
-
 </table>
 
 </div>
 
-</div>
-
-</body>
-</html>
 <div class="card">
 <h3>💳 Credit控制</h3>
 
@@ -113,15 +94,23 @@
 <div id="creditBox" style="display:none;">
 <form method="POST" action="/set_credit">
 <input name="account" placeholder="账号">
-<input name="credit" placeholder="设置余额">
+<input name="credit" placeholder="设置总余额">
 <button>确认</button>
 </form>
 </div>
+
 </div>
+
 <div class="card">
 <h3>📊 付款统计</h3>
 
 {% for p in payment_stat %}
 <p>{{p[0]}} : {{p[1]}}</p>
 {% endfor %}
+
 </div>
+
+</div>
+
+</body>
+</html>
