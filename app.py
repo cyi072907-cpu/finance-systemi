@@ -17,7 +17,7 @@ def now():
 def today():
     return datetime.now().strftime("%Y-%m-%d")
 
-# ================= INIT DB =================
+# ================= INIT =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -92,32 +92,26 @@ def dashboard():
     c.execute("SELECT * FROM transactions ORDER BY id DESC LIMIT 50")
     data = c.fetchall()
 
-    # credit
+    # credit（唯一控制总余额）
     c.execute("SELECT SUM(base) FROM credit_base")
     credit = c.fetchone()[0] or 0
 
-    # tx
-    c.execute("SELECT SUM(amount) FROM transactions")
-    tx_total = c.fetchone()[0] or 0
-
-    # 总余额
-    total_balance = credit + tx_total
-
-    # 今日盈亏
+    # 今日交易
     c.execute("""
-        SELECT SUM(amount) FROM transactions
+        SELECT SUM(amount)
+        FROM transactions
         WHERE created_at LIKE ?
     """, (today() + "%",))
     today_profit = c.fetchone()[0] or 0
 
-    # 今日交易数
     c.execute("""
-        SELECT COUNT(*) FROM transactions
+        SELECT COUNT(*)
+        FROM transactions
         WHERE created_at LIKE ?
     """, (today() + "%",))
     today_count = c.fetchone()[0] or 0
 
-    # 付款统计（修复：转 dict）
+    # 付款统计
     c.execute("""
         SELECT payment, SUM(amount)
         FROM transactions
@@ -130,7 +124,7 @@ def dashboard():
     return render_template(
         "dashboard.html",
         data=data,
-        total=total_balance,
+        total=credit,              # 🔥 关键：总余额 = credit（不再混tx）
         today_profit=today_profit,
         today_count=today_count,
         payment_stat=payment_stat
@@ -147,25 +141,26 @@ def add():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT base FROM credit_base WHERE account=?", (account,))
-    row = c.fetchone()
-    credit = row[0] if row else 0
+    # 当前credit
+    c.execute("SELECT SUM(base) FROM credit_base")
+    credit = c.fetchone()[0] or 0
 
-    c.execute("SELECT SUM(amount) FROM transactions")
-    tx_total = c.fetchone()[0] or 0
-
-    before = credit + tx_total
-
-    # 支出
+    # 强制统一扣减逻辑
     amount = -abs(amount)
 
+    before = credit
     after = before + amount
 
+    # 写入交易
     c.execute("""
         INSERT INTO transactions
         (account,amount,payment,note,balance_before,balance_after,created_at)
         VALUES (?,?,?,?,?,?,?)
     """, (account,amount,payment,note,before,after,now()))
+
+    # 更新 credit_base（关键修复点）
+    c.execute("DELETE FROM credit_base")
+    c.execute("INSERT INTO credit_base VALUES (?,?)", ("MAIN", after))
 
     conn.commit()
     conn.close()
@@ -175,15 +170,13 @@ def add():
 # ================= CREDIT =================
 @app.route("/set_credit", methods=["POST"])
 def set_credit():
-    account = request.form["account"]
     credit = float(request.form["credit"])
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("""
-        INSERT OR REPLACE INTO credit_base VALUES (?,?)
-    """, (account, credit))
+    c.execute("DELETE FROM credit_base")
+    c.execute("INSERT INTO credit_base VALUES (?,?)", ("MAIN", credit))
 
     conn.commit()
     conn.close()
@@ -210,7 +203,8 @@ def report():
     c = conn.cursor()
 
     c.execute("""
-        SELECT SUM(amount) FROM transactions
+        SELECT SUM(amount)
+        FROM transactions
         WHERE created_at LIKE ?
     """, (today() + "%",))
 
