@@ -14,7 +14,10 @@ def now():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-# ================= DB INIT =================
+def today():
+    return datetime.now().strftime("%Y-%m-%d")
+
+# ================= INIT DB =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -23,8 +26,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT,
-        password TEXT,
-        role TEXT DEFAULT 'admin'
+        password TEXT
     )
     """)
 
@@ -50,8 +52,8 @@ def init_db():
 
     c.execute("SELECT * FROM users WHERE username=?", ("huat888",))
     if not c.fetchone():
-        c.execute("INSERT INTO users (username,password,role) VALUES (?,?,?)",
-                  ("huat888", "Aaa8888", "admin"))
+        c.execute("INSERT INTO users (username,password) VALUES (?,?)",
+                  ("huat888", "Aaa8888"))
 
     conn.commit()
     conn.close()
@@ -77,7 +79,6 @@ def login():
 
     return render_template("login.html")
 
-
 # ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
@@ -87,58 +88,54 @@ def dashboard():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    # records
     c.execute("SELECT * FROM transactions ORDER BY id DESC LIMIT 50")
     data = c.fetchall()
 
-    # credit base
+    # credit
     c.execute("SELECT SUM(base) FROM credit_base")
     credit = c.fetchone()[0] or 0
 
-    # total transactions
+    # total tx
     c.execute("SELECT SUM(amount) FROM transactions")
     tx_total = c.fetchone()[0] or 0
 
-    # ✅ CORRECT BALANCE LOGIC (FIXED)
-    final_total = credit + tx_total
-
-    # payment stat
-    c.execute("SELECT payment, SUM(amount) FROM transactions GROUP BY payment")
-    payment_stat = c.fetchall()
+    # 🔥 正确余额逻辑（关键修复）
+    total_balance = credit + tx_total
 
     # today profit
-    today = datetime.now().strftime("%Y-%m-%d")
-
     c.execute("""
-        SELECT SUM(amount)
-        FROM transactions
+        SELECT SUM(amount) FROM transactions
         WHERE created_at LIKE ?
-    """, (today + "%",))
-
+    """, (today() + "%",))
     today_profit = c.fetchone()[0] or 0
 
     # today count
     c.execute("""
-        SELECT COUNT(*)
-        FROM transactions
+        SELECT COUNT(*) FROM transactions
         WHERE created_at LIKE ?
-    """, (today + "%",))
-
+    """, (today() + "%",))
     today_count = c.fetchone()[0] or 0
+
+    # payment stats
+    c.execute("""
+        SELECT payment, SUM(amount)
+        FROM transactions
+        GROUP BY payment
+    """)
+    payment_stat = c.fetchall()
 
     conn.close()
 
     return render_template(
         "dashboard.html",
         data=data,
-        total=final_total,
-        payment_stat=payment_stat,
+        total=total_balance,
         today_profit=today_profit,
-        today_count=today_count
+        today_count=today_count,
+        payment_stat=payment_stat
     )
 
-
-# ================= ADD (FIXED BALANCE BEFORE/AFTER) =================
+# ================= ADD TRANSACTION =================
 @app.route("/add", methods=["POST"])
 def add():
     account = request.form["account"]
@@ -146,23 +143,24 @@ def add():
     payment = request.form["payment"]
     note = request.form["note"]
 
-    # OUT = negative
-    if payment == "OUT":
-        amount = -abs(amount)
-
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    # get current system balance (NOT per user bug fix)
-    c.execute("SELECT SUM(base) FROM credit_base")
-    credit = c.fetchone()[0] or 0
+    c.execute("SELECT base FROM credit_base WHERE account=?", (account,))
+    row = c.fetchone()
+    credit = row[0] if row else 0
 
     c.execute("SELECT SUM(amount) FROM transactions")
     tx_total = c.fetchone()[0] or 0
 
-    current_balance = credit + tx_total
+    before = credit + tx_total
 
-    before = current_balance
+    # OUT = 支出（负）
+    if payment == "OUT":
+        amount = -abs(amount)
+    else:
+        amount = -abs(amount)   # 🔥 默认也是扣（符合你之前逻辑）
+
     after = before + amount
 
     c.execute("""
@@ -176,8 +174,7 @@ def add():
 
     return redirect("/dashboard")
 
-
-# ================= SET CREDIT =================
+# ================= CREDIT SET =================
 @app.route("/set_credit", methods=["POST"])
 def set_credit():
     account = request.form["account"]
@@ -186,13 +183,14 @@ def set_credit():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("INSERT OR REPLACE INTO credit_base VALUES (?,?)", (account,credit))
+    c.execute("""
+        INSERT OR REPLACE INTO credit_base VALUES (?,?)
+    """, (account, credit))
 
     conn.commit()
     conn.close()
 
     return redirect("/dashboard")
-
 
 # ================= HISTORY =================
 @app.route("/history")
@@ -207,7 +205,22 @@ def history():
 
     return render_template("history.html", data=data)
 
+# ================= REPORT =================
+@app.route("/report")
+def report():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-# ================= RUN =================
+    c.execute("""
+        SELECT SUM(amount) FROM transactions
+        WHERE created_at LIKE ?
+    """, (today() + "%",))
+
+    total = c.fetchone()[0] or 0
+
+    conn.close()
+
+    return render_template("report.html", total=total)
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
