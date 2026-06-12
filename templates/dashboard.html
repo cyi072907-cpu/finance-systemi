@@ -1,22 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HUAT888 DASHBOARD</title>
-<link rel="stylesheet" href="/static/style.css">
-</head>
-
-<body>
-
-<div class="container">
-
-<h2>💰 HUAT888 财务系统</h2>
+<h3>💰 总余额：{{total}}</h3>
 
 <div class="grid">
 
 <a class="card">
-📈 今日交易<br>{{today_count}} 笔
+📈 今日交易<br>{{today_count}}笔
 </a>
 
 <a class="card" href="/report">
@@ -27,90 +14,8 @@
 📜 历史记录
 </a>
 
-<a class="card" href="#add">
-➕ 添加记录
+<a class="card">
+💳 付款统计
 </a>
 
 </div>
-
-<div class="card">
-<h3>💰 总余额：{{total}}</h3>
-</div>
-
-<div class="card" id="add">
-<form method="POST" action="/add">
-
-<input name="account" placeholder="账号">
-<input name="amount" placeholder="金额">
-
-<select name="payment">
-<option>CASH</option>
-<option>TNG</option>
-<option>BANK</option>
-<option>OTHER</option>
-<option>OUT</option>
-</select>
-
-<input name="note" placeholder="备注">
-<button>提交</button>
-
-</form>
-</div>
-
-<div class="card">
-<h3>📌 最近记录</h3>
-
-<table>
-<tr>
-<th>账号</th>
-<th>金额</th>
-<th>付款</th>
-<th>前</th>
-<th>后</th>
-<th>时间</th>
-</tr>
-
-{% for r in data %}
-<tr>
-<td>{{r[1]}}</td>
-<td>{{r[2]}}</td>
-<td>{{r[3]}}</td>
-<td>{{r[5]}}</td>
-<td>{{r[6]}}</td>
-<td>{{r[7]}}</td>
-</tr>
-{% endfor %}
-</table>
-
-</div>
-
-<div class="card">
-<h3>💳 Credit控制</h3>
-
-<button onclick="document.getElementById('creditBox').style.display='block'">
-设置 Credit
-</button>
-
-<div id="creditBox" style="display:none;">
-<form method="POST" action="/set_credit">
-<input name="account" placeholder="账号">
-<input name="credit" placeholder="设置总余额">
-<button>确认</button>
-</form>
-</div>
-
-</div>
-
-<div class="card">
-<h3>📊 付款统计</h3>
-
-{% for p in payment_stat %}
-<p>{{p[0]}} : {{p[1]}}</p>
-{% endfor %}
-
-</div>
-
-</div>
-
-</body>
-</html>
