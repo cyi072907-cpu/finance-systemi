@@ -1,36 +1,36 @@
-<link rel="stylesheet" href="/static/style.css">
+<h2>💰 HUAT888 FINANCE DASHBOARD</h2>
 
-<div class="card">
-<h2>💰 总余额：{{total}}</h2>
-</div>
+<h3>Total: {{total}}</h3>
 
-<div class="card">
 <form method="POST" action="/add">
-<input name="account" placeholder="账号">
-<input name="amount" placeholder="金额">
+<input name="account" placeholder="Account">
+<input name="amount" placeholder="Amount">
 
 <select name="payment">
 <option>CASH</option>
 <option>TNG</option>
 <option>BANK</option>
+<option>OTHER</option>
 <option>OUT</option>
 </select>
 
-<input name="note" placeholder="备注">
-<button>提交</button>
+<input name="note" placeholder="Note">
+<button>Add</button>
 </form>
-</div>
+
+<table>
+<tr>
+<th>Account</th><th>Amount</th><th>Payment</th><th>Before</th><th>After</th><th>Time</th>
+</tr>
 
 {% for r in data %}
-<div class="card">
-<p>账号: {{r[1]}}</p>
-<p>金额: {{r[2]}}</p>
-<p>付款: {{r[3]}}</p>
-<p>前: {{r[5]}} 后: {{r[6]}}</p>
-<p>时间: {{r[7]}}</p>
-
-<a href="/edit_payment/{{r[0]}}/CASH">CASH</a>
-<a href="/edit_payment/{{r[0]}}/TNG">TNG</a>
-<a href="/edit_payment/{{r[0]}}/BANK">BANK</a>
-</div>
+<tr>
+<td>{{r[1]}}</td>
+<td>{{r[2]}}</td>
+<td>{{r[3]}}</td>
+<td>{{r[5]}}</td>
+<td>{{r[6]}}</td>
+<td>{{r[7]}}</td>
+</tr>
 {% endfor %}
+</table>
