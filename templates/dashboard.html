@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Finance App</title>
+<title>资金管理系统</title>
 
 <style>
 body{
@@ -40,6 +40,7 @@ button{
     border-radius:8px;
     background:#22c55e;
     color:white;
+    font-weight:bold;
 }
 
 table{
@@ -58,6 +59,7 @@ td,th{
 
 .edit{
     color:yellow;
+    text-decoration:none;
 }
 </style>
 </head>
@@ -66,16 +68,20 @@ td,th{
 
 <div class="container">
 
-<h2>💰 Finance App V5 Pro</h2>
+<h2>💰 资金管理系统 V5 Pro</h2>
 
+<!-- 总金额 -->
 <div class="card">
-<h3>Total: {{total}}</h3>
+<h3>总余额：{{total}}</h3>
 </div>
 
+<!-- 输入表单 -->
 <div class="card">
 <form action="/add" method="post">
-<input name="account" placeholder="Account">
-<input name="amount" placeholder="Amount">
+
+<input name="account" placeholder="账号">
+
+<input name="amount" placeholder="金额">
 
 <select name="payment">
 <option>CASH</option>
@@ -84,22 +90,26 @@ td,th{
 <option>OUT</option>
 </select>
 
-<input name="note" placeholder="Note">
-<button>Submit</button>
+<input name="note" placeholder="备注">
+
+<button>提交记录</button>
 </form>
 </div>
 
+<!-- 数据表 -->
 <div class="card">
+
 <table>
+
 <tr>
 <th>ID</th>
-<th>Acc</th>
-<th>Amt</th>
-<th>Pay</th>
-<th>Before</th>
-<th>After</th>
-<th>Time</th>
-<th>Edit</th>
+<th>账号</th>
+<th>金额</th>
+<th>付款方式</th>
+<th>扣前余额</th>
+<th>扣后余额</th>
+<th>时间</th>
+<th>修改</th>
 </tr>
 
 {% for r in data %}
@@ -112,14 +122,15 @@ td,th{
 <td>{{r[6]}}</td>
 <td>{{r[7]}}</td>
 <td>
-<a class="edit" href="/update_payment/{{r[0]}}/CASH">C</a>
-<a class="edit" href="/update_payment/{{r[0]}}/TNG">T</a>
-<a class="edit" href="/update_payment/{{r[0]}}/BANK">B</a>
+<a class="edit" href="/update_payment/{{r[0]}}/CASH">改C</a>
+<a class="edit" href="/update_payment/{{r[0]}}/TNG">改T</a>
+<a class="edit" href="/update_payment/{{r[0]}}/BANK">改B</a>
 </td>
 </tr>
 {% endfor %}
 
 </table>
+
 </div>
 
 </div>
