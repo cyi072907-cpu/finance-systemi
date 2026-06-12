@@ -24,7 +24,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT,
         password TEXT,
-        role TEXT DEFAULT 'user'
+        role TEXT DEFAULT 'admin'
     )
     """)
 
@@ -50,10 +50,8 @@ def init_db():
 
     c.execute("SELECT * FROM users WHERE username=?", ("huat888",))
     if not c.fetchone():
-        c.execute(
-            "INSERT INTO users (username,password,role) VALUES (?,?,?)",
-            ("huat888", "Aaa8888", "admin")
-        )
+        c.execute("INSERT INTO users (username,password,role) VALUES (?,?,?)",
+                  ("huat888", "Aaa8888", "admin"))
 
     conn.commit()
     conn.close()
@@ -79,6 +77,7 @@ def login():
 
     return render_template("login.html")
 
+
 # ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
@@ -92,21 +91,22 @@ def dashboard():
     c.execute("SELECT * FROM transactions ORDER BY id DESC LIMIT 50")
     data = c.fetchall()
 
-    # credit
+    # credit base
     c.execute("SELECT SUM(base) FROM credit_base")
     credit = c.fetchone()[0] or 0
 
-    # total IN / OUT
-    c.execute("SELECT SUM(amount) FROM transactions WHERE amount > 0")
-    total_in = c.fetchone()[0] or 0
+    # total transactions
+    c.execute("SELECT SUM(amount) FROM transactions")
+    tx_total = c.fetchone()[0] or 0
 
-    c.execute("SELECT SUM(amount) FROM transactions WHERE amount < 0")
-    total_out = c.fetchone()[0] or 0
+    # ✅ CORRECT BALANCE LOGIC (FIXED)
+    final_total = credit + tx_total
 
-    # ✅ FIXED BALANCE LOGIC (核心修复)
-    total = credit + total_in + total_out
+    # payment stat
+    c.execute("SELECT payment, SUM(amount) FROM transactions GROUP BY payment")
+    payment_stat = c.fetchall()
 
-    # TODAY
+    # today profit
     today = datetime.now().strftime("%Y-%m-%d")
 
     c.execute("""
@@ -117,6 +117,7 @@ def dashboard():
 
     today_profit = c.fetchone()[0] or 0
 
+    # today count
     c.execute("""
         SELECT COUNT(*)
         FROM transactions
@@ -125,26 +126,19 @@ def dashboard():
 
     today_count = c.fetchone()[0] or 0
 
-    # payment stat
-    c.execute("""
-        SELECT payment, SUM(amount)
-        FROM transactions
-        GROUP BY payment
-    """)
-    payment_stat = c.fetchall()
-
     conn.close()
 
     return render_template(
         "dashboard.html",
         data=data,
-        total=total,
+        total=final_total,
+        payment_stat=payment_stat,
         today_profit=today_profit,
-        today_count=today_count,
-        payment_stat=payment_stat
+        today_count=today_count
     )
 
-# ================= ADD =================
+
+# ================= ADD (FIXED BALANCE BEFORE/AFTER) =================
 @app.route("/add", methods=["POST"])
 def add():
     account = request.form["account"]
@@ -152,35 +146,36 @@ def add():
     payment = request.form["payment"]
     note = request.form["note"]
 
-    # OUT = 负数
+    # OUT = negative
     if payment == "OUT":
         amount = -abs(amount)
-    else:
-        amount = abs(amount)
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    # 当前余额（统一计算，不再用 manual_balance）
+    # get current system balance (NOT per user bug fix)
     c.execute("SELECT SUM(base) FROM credit_base")
     credit = c.fetchone()[0] or 0
 
     c.execute("SELECT SUM(amount) FROM transactions")
-    tx = c.fetchone()[0] or 0
+    tx_total = c.fetchone()[0] or 0
 
-    old = credit + tx
-    new = old + amount
+    current_balance = credit + tx_total
+
+    before = current_balance
+    after = before + amount
 
     c.execute("""
         INSERT INTO transactions
         (account,amount,payment,note,balance_before,balance_after,created_at)
         VALUES (?,?,?,?,?,?,?)
-    """, (account,amount,payment,note,old,new,now()))
+    """, (account,amount,payment,note,before,after,now()))
 
     conn.commit()
     conn.close()
 
     return redirect("/dashboard")
+
 
 # ================= SET CREDIT =================
 @app.route("/set_credit", methods=["POST"])
@@ -198,6 +193,7 @@ def set_credit():
 
     return redirect("/dashboard")
 
+
 # ================= HISTORY =================
 @app.route("/history")
 def history():
@@ -210,6 +206,7 @@ def history():
     conn.close()
 
     return render_template("history.html", data=data)
+
 
 # ================= RUN =================
 if __name__ == "__main__":
