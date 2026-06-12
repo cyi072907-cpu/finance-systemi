@@ -6,10 +6,10 @@ body{
 }
 
 .card{
-    background:#1e293b;
     margin:10px;
     padding:12px;
-    border-radius:14px;
+    background:#1e293b;
+    border-radius:16px;
 }
 
 input,select,button{
@@ -18,9 +18,4 @@ input,select,button{
     margin:5px 0;
     border-radius:10px;
     border:none;
-}
-
-button{
-    background:#22c55e;
-    color:white;
 }
