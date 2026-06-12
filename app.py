@@ -1,134 +1,183 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, render_template, request, redirect, session
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
+app.secret_key = "finance_v5_pro"
 
-# =========================
-# DATABASE
-# =========================
 DB = "data.db"
 
+# ================= DB INIT =================
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("""
-        CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            account TEXT,
-            amount REAL,
-            type TEXT,
-            note TEXT,
-            created_at TEXT
-        )
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        password TEXT,
+        role TEXT DEFAULT 'user'
+    )
     """)
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account TEXT,
+        amount REAL,
+        payment TEXT,
+        note TEXT,
+        balance_before REAL,
+        balance_after REAL,
+        created_at TEXT
+    )
+    """)
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS manual_balance (
+        account TEXT PRIMARY KEY,
+        balance REAL
+    )
+    """)
+
     conn.commit()
     conn.close()
 
 init_db()
 
-# =========================
-# HOME PAGE（简洁中文界面）
-# =========================
-@app.route("/")
-def home():
-    return render_template_string("""
-    <h2>💰 资金管理系统 V5 FINAL</h2>
+# ================= LOGIN =================
+@app.route("/", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
 
-    <form method="POST" action="/add">
-        账号: <input name="account"><br><br>
-        金额: <input name="amount" type="number" step="0.01"><br><br>
-        类型:
-        <select name="type">
-            <option value="in">入金</option>
-            <option value="out">出金</option>
-        </select><br><br>
-        备注: <input name="note"><br><br>
-        <button type="submit">提交</button>
-    </form>
+        conn = sqlite3.connect(DB)
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+        user = c.fetchone()
+        conn.close()
 
-    <hr>
-    <a href="/history">📜 查看历史</a> |
-    <a href="/balance">💰 查看余额</a>
-    """)
+        if user:
+            session["user"] = username
+            return redirect("/dashboard")
 
-# =========================
-# ADD RECORD
-# =========================
-@app.route("/add", methods=["POST"])
-def add():
-    account = request.form.get("account")
-    amount = float(request.form.get("amount"))
-    ttype = request.form.get("type")
-    note = request.form.get("note")
+        return "登录失败"
 
-    # ❗修复 -50 bug：统一逻辑
-    if ttype == "out":
-        amount = -abs(amount)
-    else:
-        amount = abs(amount)
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/")
+
+# ================= DASHBOARD =================
+@app.route("/dashboard")
+def dashboard():
+    if "user" not in session:
+        return redirect("/")
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
+    c.execute("SELECT * FROM transactions ORDER BY id DESC LIMIT 50")
+    data = c.fetchall()
+
+    c.execute("SELECT SUM(amount) FROM transactions")
+    total = c.fetchone()[0] or 0
+
+    conn.close()
+
+    return render_template("dashboard.html", data=data, total=total)
+
+# ================= ADD =================
+@app.route("/add", methods=["POST"])
+def add():
+    account = request.form["account"]
+    amount = float(request.form["amount"])
+    payment = request.form["payment"]
+    note = request.form["note"]
+
+    # ✅ 修复 -50 bug（核心）
+    amount = abs(amount)
+
+    if payment == "OUT":
+        amount = -amount
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("SELECT balance FROM manual_balance WHERE account=?", (account,))
+    row = c.fetchone()
+    old_balance = row[0] if row else 0
+
+    new_balance = old_balance + amount
+
     c.execute("""
-        INSERT INTO transactions (account, amount, type, note, created_at)
-        VALUES (?, ?, ?, ?, ?)
-    """, (account, amount, ttype, note, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        INSERT INTO transactions
+        (account, amount, payment, note, balance_before, balance_after, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (account, amount, payment, note, old_balance, new_balance, datetime.now()))
+
+    c.execute("""
+        INSERT OR REPLACE INTO manual_balance (account, balance)
+        VALUES (?, ?)
+    """, (account, new_balance))
+
     conn.commit()
     conn.close()
 
-    return "OK 已记录"
+    return redirect("/dashboard")
 
-# =========================
-# HISTORY
-# =========================
+# ================= BALANCE =================
+@app.route("/balance", methods=["GET", "POST"])
+def balance():
+    if request.method == "POST":
+        account = request.form["account"]
+        new_balance = float(request.form["balance"])
+
+        conn = sqlite3.connect(DB)
+        c = conn.cursor()
+        c.execute("INSERT OR REPLACE INTO manual_balance VALUES (?,?)", (account, new_balance))
+        conn.commit()
+        conn.close()
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT * FROM manual_balance")
+    data = c.fetchall()
+    conn.close()
+
+    return render_template("balance.html", data=data)
+
+# ================= HISTORY (30天) =================
 @app.route("/history")
 def history():
+    limit_date = datetime.now() - timedelta(days=30)
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT * FROM transactions ORDER BY id DESC")
+
+    c.execute("SELECT * FROM transactions WHERE created_at >= ? ORDER BY id DESC",
+              (limit_date,))
+
     data = c.fetchall()
     conn.close()
 
-    html = "<h2>📜 历史记录</h2>"
-    html += "<a href='/'>返回</a><br><br>"
+    return render_template("history.html", data=data)
 
-    html += "<table border='1' cellpadding='5'>"
-    html += "<tr><th>ID</th><th>账号</th><th>金额</th><th>类型</th><th>备注</th><th>时间</th></tr>"
-
-    for row in data:
-        html += f"<tr>{''.join([f'<td>{i}</td>' for i in row])}</tr>"
-
-    html += "</table>"
-    return html
-
-# =========================
-# BALANCE（修复 -50 bug 核心）
-# =========================
-@app.route("/balance")
-def balance():
+# ================= AUTO CLEAN =================
+def clean_old():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT account, SUM(amount) FROM transactions GROUP BY account")
-    data = c.fetchall()
+    limit = datetime.now() - timedelta(days=30)
+    c.execute("DELETE FROM transactions WHERE created_at < ?", (limit,))
+    conn.commit()
     conn.close()
 
-    html = "<h2>💰 余额</h2><a href='/'>返回</a><br><br>"
-
-    total_all = 0
-
-    for account, total in data:
-        total = total or 0
-        total_all += total
-        html += f"<p>账号 {account}：RM {round(total,2)}</p>"
-
-    html += f"<hr><h3>总余额：RM {round(total_all,2)}</h3>"
-    return html
-
-# =========================
-# RUN
-# =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
