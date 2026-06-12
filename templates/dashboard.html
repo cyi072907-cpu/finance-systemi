@@ -4,31 +4,29 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>资金管理系统</title>
+<title>V5 PRO FINAL</title>
 
 <style>
 body{
     margin:0;
-    font-family: Arial;
+    font-family:Arial;
     background:#0f172a;
     color:white;
 }
 
-.container{
-    padding:15px;
-}
+.container{padding:15px;}
 
 .card{
     background:#1e293b;
     padding:15px;
     border-radius:12px;
-    margin-bottom:10px;
+    margin-bottom:12px;
 }
 
 input,select{
     width:100%;
     padding:10px;
-    margin:5px 0;
+    margin-top:5px;
     border-radius:8px;
     border:none;
 }
@@ -36,6 +34,7 @@ input,select{
 button{
     width:100%;
     padding:10px;
+    margin-top:10px;
     border:none;
     border-radius:8px;
     background:#22c55e;
@@ -43,23 +42,20 @@ button{
     font-weight:bold;
 }
 
-table{
-    width:100%;
-    font-size:12px;
-    background:#111827;
-    border-radius:10px;
-    overflow:hidden;
-}
-
-td,th{
-    padding:6px;
-    text-align:center;
+.row{
+    display:flex;
+    justify-content:space-between;
+    padding:6px 0;
     border-bottom:1px solid #333;
+    font-size:12px;
 }
 
-.edit{
-    color:yellow;
-    text-decoration:none;
+.green{color:#22c55e;}
+.red{color:#ef4444;}
+
+.big{
+    font-size:22px;
+    font-weight:bold;
 }
 </style>
 </head>
@@ -68,19 +64,15 @@ td,th{
 
 <div class="container">
 
-<h2>💰 资金管理系统 V5 Pro</h2>
-
-<!-- 总金额 -->
 <div class="card">
-<h3>总余额：{{total}}</h3>
+<h2>💰 总余额</h2>
+<div class="big">{{total}}</div>
 </div>
 
-<!-- 输入表单 -->
 <div class="card">
-<form action="/add" method="post">
+<form method="post" action="/add">
 
 <input name="account" placeholder="账号">
-
 <input name="amount" placeholder="金额">
 
 <select name="payment">
@@ -92,44 +84,24 @@ td,th{
 
 <input name="note" placeholder="备注">
 
-<button>提交记录</button>
+<button>提交</button>
+
 </form>
 </div>
 
-<!-- 数据表 -->
 <div class="card">
-
-<table>
-
-<tr>
-<th>ID</th>
-<th>账号</th>
-<th>金额</th>
-<th>付款方式</th>
-<th>扣前余额</th>
-<th>扣后余额</th>
-<th>时间</th>
-<th>修改</th>
-</tr>
+<h3>最近记录</h3>
 
 {% for r in data %}
-<tr>
-<td>{{r[0]}}</td>
-<td>{{r[1]}}</td>
-<td>{{r[2]}}</td>
-<td>{{r[3]}}</td>
-<td>{{r[5]}}</td>
-<td>{{r[6]}}</td>
-<td>{{r[7]}}</td>
-<td>
-<a class="edit" href="/update_payment/{{r[0]}}/CASH">改C</a>
-<a class="edit" href="/update_payment/{{r[0]}}/TNG">改T</a>
-<a class="edit" href="/update_payment/{{r[0]}}/BANK">改B</a>
-</td>
-</tr>
+<div class="row">
+<span>{{r[1]}}</span>
+<span class="{% if r[2] < 0 %}red{% else %}green{% endif %}">
+{{r[2]}}
+</span>
+<span>{{r[3]}}</span>
+<span>{{r[7]}}</span>
+</div>
 {% endfor %}
-
-</table>
 
 </div>
 
