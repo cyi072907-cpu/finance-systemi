@@ -110,10 +110,10 @@ def dashboard():
     c.execute("SELECT COUNT(*) FROM transactions")
     has_tx = c.fetchone()[0]
 
-    if has_tx == 0:
-        final_total = credit
-    else:
-        final_total = credit + tx_total
+if has_tx == 0:
+    final_total = credit
+else:
+    final_total = credit - tx_total
 
     # payment stats
     c.execute("SELECT payment, SUM(amount) FROM transactions GROUP BY payment")
@@ -128,7 +128,7 @@ def dashboard():
         WHERE created_at LIKE ?
     """, (today + "%",))
 
-    today_profit = c.fetchone()[0] or 0
+    today_profit = -(c.fetchone()[0] or 0)
 
     # TODAY COUNT
     c.execute("""
