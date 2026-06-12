@@ -88,6 +88,7 @@ def dashboard():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
+    # 最近记录
     c.execute("SELECT * FROM transactions ORDER BY id DESC LIMIT 50")
     data = c.fetchall()
 
@@ -95,34 +96,34 @@ def dashboard():
     c.execute("SELECT SUM(base) FROM credit_base")
     credit = c.fetchone()[0] or 0
 
-    # total tx
+    # tx
     c.execute("SELECT SUM(amount) FROM transactions")
     tx_total = c.fetchone()[0] or 0
 
-    # 🔥 正确余额逻辑（关键修复）
+    # 总余额
     total_balance = credit + tx_total
 
-    # today profit
+    # 今日盈亏
     c.execute("""
         SELECT SUM(amount) FROM transactions
         WHERE created_at LIKE ?
     """, (today() + "%",))
     today_profit = c.fetchone()[0] or 0
 
-    # today count
+    # 今日交易数
     c.execute("""
         SELECT COUNT(*) FROM transactions
         WHERE created_at LIKE ?
     """, (today() + "%",))
     today_count = c.fetchone()[0] or 0
 
-    # payment stats
+    # 付款统计（修复：转 dict）
     c.execute("""
         SELECT payment, SUM(amount)
         FROM transactions
         GROUP BY payment
     """)
-    payment_stat = c.fetchall()
+    payment_stat = dict(c.fetchall())
 
     conn.close()
 
@@ -135,7 +136,7 @@ def dashboard():
         payment_stat=payment_stat
     )
 
-# ================= ADD TRANSACTION =================
+# ================= ADD =================
 @app.route("/add", methods=["POST"])
 def add():
     account = request.form["account"]
@@ -155,11 +156,8 @@ def add():
 
     before = credit + tx_total
 
-    # OUT = 支出（负）
-    if payment == "OUT":
-        amount = -abs(amount)
-    else:
-        amount = -abs(amount)   # 🔥 默认也是扣（符合你之前逻辑）
+    # 支出
+    amount = -abs(amount)
 
     after = before + amount
 
@@ -174,7 +172,7 @@ def add():
 
     return redirect("/dashboard")
 
-# ================= CREDIT SET =================
+# ================= CREDIT =================
 @app.route("/set_credit", methods=["POST"])
 def set_credit():
     account = request.form["account"]
