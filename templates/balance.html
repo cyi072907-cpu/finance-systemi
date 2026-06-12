@@ -1,13 +1,16 @@
-<h2>余额管理（可手动改）</h2>
+<h2>手动信用管理</h2>
 
-<form method="POST">
+<form method="POST" action="/update_balance">
 <input name="account" placeholder="账号">
-<input name="balance" placeholder="余额">
+<input name="balance" placeholder="Credit">
 <button>更新</button>
 </form>
 
-<hr>
-
+<table>
 {% for r in data %}
-<p>{{r[0]}} : {{r[1]}}</p>
+<tr>
+<td>{{r[0]}}</td>
+<td>{{r[1]}}</td>
+</tr>
 {% endfor %}
+</table>
