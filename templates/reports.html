@@ -1,21 +1,10 @@
-<h2>📊 盈亏报表</h2>
+<h2>📊 REPORT</h2>
 
-<div class="card">
-收入：{{income}}
-</div>
+<h3>Total: {{total}}</h3>
+<h3>Profit: {{profit}}</h3>
 
-<div class="card">
-支出：{{expense}}
-</div>
+<h4>Payment Breakdown</h4>
 
-<div class="card">
-净利润：{{profit}}
-</div>
-
-<h3>付款方式统计</h3>
-
-{% for p in breakdown %}
-<div class="card">
-{{p}}
-</div>
+{% for p in payment %}
+<p>{{p[0]}} : {{p[1]}}</p>
 {% endfor %}
