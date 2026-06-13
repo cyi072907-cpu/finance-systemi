@@ -18,10 +18,16 @@
         <h3>RM {{ "%.2f"|format(balance) }}</h3>
     </div>
 
-    <div class="box">
-        <div class="title">📊 今日收支</div>
-        <p>开发中</p>
-    </div>
+<div class="box">
+    <div class="title">📊 今日收支</div>
+<p>收入：RM {{ "%.2f"|format(income_total) }}</p>
+<p>支出：RM {{ "%.2f"|format(expense_total) }}</p>
+<p>净收入：RM {{ "%.2f"|format(net_income) }}</p>
+<hr>
+<p>交易：{{ transaction_count }} 笔</p>
+<p>收入笔数：{{ income_count }}</p>
+<p>支出笔数：{{ expense_count }}</p>
+</div>
 
     <div class="box">
         <div class="title">📜 历史记录</div>
