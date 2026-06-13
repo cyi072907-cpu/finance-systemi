@@ -6,26 +6,32 @@
 </head>
 <body>
 
-<h2>HUAT888 财务系统</h2>
+<div class="top-bar">
+    <h2>HUAT888 财务系统</h2>
+    <a href="/settings">⚙️ 设置</a>
+</div>
 
 <div class="grid">
 
-<div class="box">
-💰 总余额
-<h3>{{ balance }}</h3>
-</div>
+    <div class="box">
+        <div class="title">💰 总余额</div>
+        <h3>RM {{ "%.2f"|format(balance) }}</h3>
+    </div>
 
-<div class="box">
-📊 今日收支
-</div>
+    <div class="box">
+        <div class="title">📊 今日收支</div>
+        <p>开发中</p>
+    </div>
 
-<div class="box">
-📜 历史记录
-</div>
+    <div class="box">
+        <div class="title">📜 历史记录</div>
+        <p>{{ records|length }} 条</p>
+    </div>
 
-<div class="box">
-💳 付款统计
-</div>
+    <div class="box">
+        <div class="title">💳 付款统计</div>
+        <p>开发中</p>
+    </div>
 
 </div>
 
@@ -46,12 +52,10 @@ placeholder="金额"
 required>
 
 <select name="payment_method">
-
 <option>BANK</option>
 <option>TNG</option>
 <option>CASH</option>
 <option>A</option>
-
 </select>
 
 <input
@@ -59,10 +63,34 @@ name="remark"
 placeholder="备注">
 
 <button type="submit">
-保存
+保存记录
 </button>
 
 </form>
+
+</div>
+
+<div class="card">
+
+<h3>最近记录</h3>
+
+<table>
+
+<tr>
+<th>账号</th>
+<th>金额</th>
+</tr>
+
+{% for row in records %}
+
+<tr>
+<td>{{ row.account }}</td>
+<td>{{ row.amount }}</td>
+</tr>
+
+{% endfor %}
+
+</table>
 
 </div>
 
