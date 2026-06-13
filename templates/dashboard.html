@@ -1,130 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HUAT888 DASHBOARD</title>
+<title>HUAT888 Dashboard</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
-
 <body>
 
-<div class="container">
+<h2>HUAT888 财务系统</h2>
 
-<h2>💰 HUAT888 财务系统</h2>
-
-<!-- ================= 2x2 固定四宫格 ================= -->
 <div class="grid">
 
+<div class="box">
+💰 总余额
+<h3>{{ balance }}</h3>
+</div>
+
+<div class="box">
+📊 今日收支
+</div>
+
+<div class="box">
+📜 历史记录
+</div>
+
+<div class="box">
+💳 付款统计
+</div>
+
+</div>
+
 <div class="card">
-💳 Credit / 总余额<br>
-<h3>{{total}}</h3>
-</div>
 
-<div class="card">
-📊 盈亏（今日）<br>
-<h3>
-{% if today_profit > 0 %}
-+{{today_profit}}
-{% else %}
-{{today_profit}}
-{% endif %}
-</h3>
-</div>
+<h3>新增记录</h3>
 
-<div class="card">
-📈 今日交易<br>
-<h3>{{today_count}} 笔</h3>
-</div>
+<form action="/add" method="post">
 
-<div class="card" onclick="togglePay()">
-💰 付款统计（点击）
-</div>
+<input
+name="account"
+placeholder="账号"
+required>
 
-</div>
+<input
+name="amount"
+placeholder="金额"
+required>
 
-<!-- ================= 付款统计下拉 ================= -->
-<div class="card" id="payBox" style="display:none;">
-<h3>付款统计</h3>
-{% for p in payment_stat %}
-<p>{{p[0]}} : {{p[1]}}</p>
-{% endfor %}
-</div>
+<select name="payment_method">
 
-<!-- ================= credit 设置 ================= -->
-<div class="card">
-<h3>💳 设置总余额 / Credit</h3>
-
-<form method="POST" action="/set_credit">
-<input name="account" placeholder="账号">
-<input name="credit" placeholder="设置总余额">
-<button>确认</button>
-</form>
-</div>
-
-<!-- ================= 添加记录 ================= -->
-<div class="card">
-<h3>➕ 添加记录</h3>
-
-<form method="POST" action="/add">
-
-<input name="account" placeholder="账号">
-<input name="amount" placeholder="金额">
-
-<select name="payment">
-<option>CASH</option>
-<option>TNG</option>
 <option>BANK</option>
-<option>OTHER</option>
-<option>OUT</option>
+<option>TNG</option>
+<option>CASH</option>
+<option>A</option>
+
 </select>
 
-<input name="note" placeholder="备注">
+<input
+name="remark"
+placeholder="备注">
 
-<button>提交</button>
+<button type="submit">
+保存
+</button>
 
 </form>
-</div>
-
-<!-- ================= 最近记录 ================= -->
-<div class="card">
-
-<h3>📜 最近记录</h3>
-
-<table>
-
-<tr>
-<th>账号</th>
-<th>金额</th>
-<th>付款</th>
-<th>前</th>
-<th>后</th>
-<th>时间</th>
-</tr>
-
-{% for r in data %}
-<tr>
-<td>{{r[1]}}</td>
-<td>{{r[2]}}</td>
-<td>{{r[3]}}</td>
-<td>{{r[5]}}</td>
-<td>{{r[6]}}</td>
-<td>{{r[7]}}</td>
-</tr>
-{% endfor %}
-
-</table>
 
 </div>
-
-</div>
-
-<script>
-function togglePay(){
-    let box = document.getElementById("payBox");
-    box.style.display = (box.style.display === "none") ? "block" : "none";
-}
-</script>
 
 </body>
 </html>
