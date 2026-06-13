@@ -16,6 +16,7 @@ def get_db():
 
 
 def init_db():
+
     conn = get_db()
 
     conn.execute("""
@@ -39,6 +40,13 @@ def init_db():
     )
     """)
 
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS settings(
+        id INTEGER PRIMARY KEY,
+        target_balance REAL
+    )
+    """)
+
     conn.commit()
 
     user = conn.execute(
@@ -52,6 +60,16 @@ def init_db():
         )
         conn.commit()
 
+    setting = conn.execute(
+        "SELECT * FROM settings WHERE id=1"
+    ).fetchone()
+
+    if not setting:
+        conn.execute(
+            "INSERT INTO settings(id,target_balance) VALUES(1,5000)"
+        )
+        conn.commit()
+
     conn.close()
 
 
@@ -60,6 +78,7 @@ init_db()
 
 @app.route("/")
 def index():
+
     if "user" not in session:
         return redirect("/login")
 
@@ -72,7 +91,13 @@ def index():
         LIMIT 10
     """).fetchall()
 
-    balance = 0
+    setting = conn.execute("""
+        SELECT *
+        FROM settings
+        WHERE id=1
+    """).fetchone()
+
+    balance = setting["target_balance"]
 
     last_record = conn.execute("""
         SELECT *
@@ -90,6 +115,42 @@ def index():
         "dashboard.html",
         balance=balance,
         records=records
+    )
+
+
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+
+    if "user" not in session:
+        return redirect("/login")
+
+    conn = get_db()
+
+    if request.method == "POST":
+
+        target_balance = float(
+            request.form["target_balance"]
+        )
+
+        conn.execute("""
+        UPDATE settings
+        SET target_balance=?
+        WHERE id=1
+        """, (target_balance,))
+
+        conn.commit()
+
+    setting = conn.execute("""
+    SELECT *
+    FROM settings
+    WHERE id=1
+    """).fetchone()
+
+    conn.close()
+
+    return render_template(
+        "settings.html",
+        setting=setting
     )
 
 
@@ -137,16 +198,22 @@ def add_record():
         LIMIT 1
     """).fetchone()
 
-    before_balance = 0
+    setting = conn.execute("""
+        SELECT *
+        FROM settings
+        WHERE id=1
+    """).fetchone()
+
+    before_balance = setting["target_balance"]
 
     if last:
         before_balance = last["after_balance"]
 
     after_balance = before_balance - amount
 
-    malaysia_time = datetime.now(TIMEZONE).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    malaysia_time = datetime.now(
+        TIMEZONE
+    ).strftime("%Y-%m-%d %H:%M:%S")
 
     conn.execute("""
     INSERT INTO records(
@@ -174,6 +241,14 @@ def add_record():
     conn.close()
 
     return redirect("/")
+
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect("/login")
 
 
 if __name__ == "__main__":
