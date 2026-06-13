@@ -1,127 +1,180 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
 from datetime import datetime
-import os
 import pytz
 
 app = Flask(__name__)
-app.secret_key = "finance_v5_pro"
+app.secret_key = "huat888_secret"
 
-DB = "data.db"
+TIMEZONE = pytz.timezone("Asia/Kuala_Lumpur")
 
-# ================= TIME =================
-def now():
-    tz = pytz.timezone("Asia/Kuala_Lumpur")
-    return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-def today():
-    return datetime.now().strftime("%Y-%m-%d")
+def get_db():
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    return conn
 
-# ================= DASHBOARD =================
-@app.route("/dashboard")
-def dashboard():
-    if "user" not in session:
-        return redirect("/")
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+def init_db():
+    conn = get_db()
 
-    # 记录
-    c.execute("SELECT * FROM transactions ORDER BY id DESC LIMIT 50")
-    data = c.fetchall()
-
-    # 🔥 credit（手动设置总余额）
-    c.execute("SELECT SUM(base) FROM credit_base")
-    credit = c.fetchone()[0] or 0
-
-    # 🔥 所有交易
-    c.execute("SELECT SUM(amount) FROM transactions")
-    tx_total = c.fetchone()[0] or 0
-
-    # ✔ 总余额（核心修复）
-    total_balance = credit + tx_total
-
-    # 🔥 今日盈亏（修复关键）
-    c.execute("""
-        SELECT SUM(amount)
-        FROM transactions
-        WHERE created_at LIKE ?
-    """, (today() + "%",))
-    today_profit = c.fetchone()[0] or 0
-
-    # 今日交易
-    c.execute("""
-        SELECT COUNT(*)
-        FROM transactions
-        WHERE created_at LIKE ?
-    """, (today() + "%",))
-    today_count = c.fetchone()[0] or 0
-
-    # 付款统计
-    c.execute("""
-        SELECT payment, SUM(amount)
-        FROM transactions
-        GROUP BY payment
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        password TEXT
+    )
     """)
-    payment_stat = c.fetchall()
+
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS records(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account TEXT,
+        amount REAL,
+        payment_method TEXT,
+        before_balance REAL,
+        after_balance REAL,
+        remark TEXT,
+        created_at TEXT
+    )
+    """)
+
+    conn.commit()
+
+    user = conn.execute(
+        "SELECT * FROM users WHERE username='admin'"
+    ).fetchone()
+
+    if not user:
+        conn.execute(
+            "INSERT INTO users(username,password) VALUES (?,?)",
+            ("admin", "123456")
+        )
+        conn.commit()
+
+    conn.close()
+
+
+init_db()
+
+
+@app.route("/")
+def index():
+    if "user" not in session:
+        return redirect("/login")
+
+    conn = get_db()
+
+    records = conn.execute("""
+        SELECT *
+        FROM records
+        ORDER BY id DESC
+        LIMIT 10
+    """).fetchall()
+
+    balance = 0
+
+    last_record = conn.execute("""
+        SELECT *
+        FROM records
+        ORDER BY id DESC
+        LIMIT 1
+    """).fetchone()
+
+    if last_record:
+        balance = last_record["after_balance"]
 
     conn.close()
 
     return render_template(
         "dashboard.html",
-        data=data,
-        total=total_balance,
-        today_profit=today_profit,
-        today_count=today_count,
-        payment_stat=payment_stat
+        balance=balance,
+        records=records
     )
 
-# ================= ADD =================
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+
+    if request.method == "POST":
+
+        username = request.form["username"]
+        password = request.form["password"]
+
+        conn = get_db()
+
+        user = conn.execute(
+            "SELECT * FROM users WHERE username=? AND password=?",
+            (username, password)
+        ).fetchone()
+
+        conn.close()
+
+        if user:
+            session["user"] = username
+            return redirect("/")
+
+    return render_template("login.html")
+
+
 @app.route("/add", methods=["POST"])
-def add():
+def add_record():
+
+    if "user" not in session:
+        return redirect("/login")
+
     account = request.form["account"]
     amount = float(request.form["amount"])
-    payment = request.form["payment"]
-    note = request.form["note"]
+    payment_method = request.form["payment_method"]
+    remark = request.form["remark"]
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+    conn = get_db()
 
-    c.execute("SELECT SUM(base) FROM credit_base")
-    credit = c.fetchone()[0] or 0
+    last = conn.execute("""
+        SELECT *
+        FROM records
+        ORDER BY id DESC
+        LIMIT 1
+    """).fetchone()
 
-    c.execute("SELECT SUM(amount) FROM transactions")
-    tx_total = c.fetchone()[0] or 0
+    before_balance = 0
 
-    before = credit + tx_total
+    if last:
+        before_balance = last["after_balance"]
 
-    amount = -abs(amount)  # 默认扣钱
+    after_balance = before_balance - amount
 
-    after = before + amount
+    malaysia_time = datetime.now(TIMEZONE).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
 
-    c.execute("""
-        INSERT INTO transactions
-        (account,amount,payment,note,balance_before,balance_after,created_at)
-        VALUES (?,?,?,?,?,?,?)
-    """, (account, amount, payment, note, before, after, now()))
+    conn.execute("""
+    INSERT INTO records(
+        account,
+        amount,
+        payment_method,
+        before_balance,
+        after_balance,
+        remark,
+        created_at
+    )
+    VALUES(?,?,?,?,?,?,?)
+    """,
+    (
+        account,
+        amount,
+        payment_method,
+        before_balance,
+        after_balance,
+        remark,
+        malaysia_time
+    ))
 
     conn.commit()
     conn.close()
 
-    return redirect("/dashboard")
+    return redirect("/")
 
-# ================= SET CREDIT =================
-@app.route("/set_credit", methods=["POST"])
-def set_credit():
-    account = request.form["account"]
-    credit = float(request.form["credit"])
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute("INSERT OR REPLACE INTO credit_base VALUES (?,?)", (account, credit))
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/dashboard")
+if __name__ == "__main__":
+    app.run(debug=True)
