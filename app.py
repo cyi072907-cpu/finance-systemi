@@ -76,46 +76,66 @@ def init_db():
 init_db()
 
 
-@app.route("/")
+@app.route(”/”)
 def index():
 
-    if "user" not in session:
-        return redirect("/login")
-
-    conn = get_db()
-
-    records = conn.execute("""
-        SELECT *
-        FROM records
-        ORDER BY id DESC
-        LIMIT 10
-    """).fetchall()
-
-    setting = conn.execute("""
-        SELECT *
-        FROM settings
-        WHERE id=1
-    """).fetchone()
-
-    balance = setting["target_balance"]
-
-    last_record = conn.execute("""
-        SELECT *
-        FROM records
-        ORDER BY id DESC
-        LIMIT 1
-    """).fetchone()
-
-    if last_record:
-        balance = last_record["after_balance"]
-
-    conn.close()
-
-    return render_template(
-        "dashboard.html",
-        balance=balance,
-        records=records
-    )
+if "user" not in session:
+    return redirect("/login")
+conn = get_db()
+records = conn.execute("""
+    SELECT *
+    FROM records
+    ORDER BY id DESC
+    LIMIT 10
+""").fetchall()
+setting = conn.execute("""
+    SELECT *
+    FROM settings
+    WHERE id=1
+""").fetchone()
+balance = setting["target_balance"]
+last_record = conn.execute("""
+    SELECT *
+    FROM records
+    ORDER BY id DESC
+    LIMIT 1
+""").fetchone()
+if last_record:
+    balance = last_record["after_balance"]
+today = datetime.now(
+    TIMEZONE
+).strftime("%Y-%m-%d")
+today_records = conn.execute("""
+    SELECT *
+    FROM records
+    WHERE substr(created_at,1,10)=?
+""", (today,)).fetchall()
+income_total = 0
+expense_total = 0
+income_count = 0
+expense_count = 0
+for row in today_records:
+    amount = row["amount"]
+    if amount > 0:
+        income_total += amount
+        income_count += 1
+    elif amount < 0:
+        expense_total += abs(amount)
+        expense_count += 1
+transaction_count = len(today_records)
+net_income = income_total - expense_total
+conn.close()
+return render_template(
+    "dashboard.html",
+    balance=balance,
+    records=records,
+    income_total=income_total,
+    expense_total=expense_total,
+    net_income=net_income,
+    transaction_count=transaction_count,
+    income_count=income_count,
+    expense_count=expense_count
+)
 
 
 @app.route("/settings", methods=["GET", "POST"])
