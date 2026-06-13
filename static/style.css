@@ -1,70 +1,36 @@
 body{
-    margin:0;
-    font-family: Arial;
     background:#0f172a;
     color:white;
-}
-
-.container{
+    font-family:sans-serif;
     padding:15px;
 }
 
-/* ===== 2x2 固定布局 ===== */
 .grid{
     display:grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns:1fr 1fr;
     gap:10px;
-    margin-bottom:15px;
 }
 
-/* 卡片 */
+.box{
+    background:#1e293b;
+    border-radius:15px;
+    padding:20px;
+    min-height:100px;
+}
+
 .card{
     background:#1e293b;
-    padding:15px;
-    border-radius:12px;
-    text-align:center;
+    border-radius:15px;
+    padding:20px;
+    margin-top:20px;
 }
 
-/* 按钮卡片 */
-a.card{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-decoration:none;
-    color:white;
-    font-weight:bold;
-    height:80px;
-    font-size:16px;
-}
-
-/* 输入 */
-input,select{
-    width:100%;
-    padding:10px;
-    margin:5px 0;
-    border-radius:8px;
-    border:none;
-}
-
+input,
+select,
 button{
     width:100%;
-    padding:10px;
+    padding:12px;
+    margin-top:10px;
+    border-radius:10px;
     border:none;
-    border-radius:8px;
-    background:#22c55e;
-    color:white;
-    font-weight:bold;
-}
-
-/* table */
-table{
-    width:100%;
-    font-size:12px;
-    border-collapse: collapse;
-}
-
-td,th{
-    padding:6px;
-    text-align:center;
-    border-bottom:1px solid #333;
 }
